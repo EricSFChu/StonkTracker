@@ -34,12 +34,22 @@ export function TopAssetsChart({ data }: TopAssetsChartProps) {
       {data.length ? (
         <div className="chart-shell">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data}>
+            <BarChart
+              data={data}
+              margin={{
+                top: 8,
+                right: 8,
+                bottom: 0,
+                left: 20
+              }}
+            >
               <CartesianGrid vertical={false} stroke="rgba(146, 170, 198, 0.12)" />
               <XAxis dataKey="label" tickLine={false} axisLine={false} />
               <YAxis
                 tickLine={false}
                 axisLine={false}
+                width={92}
+                tickMargin={10}
                 tickFormatter={(value: number) => formatCurrency(value)}
               />
               <Tooltip formatter={(value: number) => formatCurrency(value)} />

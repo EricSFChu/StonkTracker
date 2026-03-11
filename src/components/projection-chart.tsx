@@ -78,9 +78,17 @@ export function ProjectionChart({
         </div>
       </div>
 
-      <div className="chart-shell">
-        <ResponsiveContainer width="100%" height={320}>
-          <AreaChart data={projectionData}>
+      <div className="chart-shell projection-chart-shell">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={projectionData}
+            margin={{
+              top: 8,
+              right: 8,
+              bottom: 12,
+              left: 8
+            }}
+          >
             <defs>
               <linearGradient id="projectionFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#ff8c42" stopOpacity={0.5} />
@@ -88,7 +96,7 @@ export function ProjectionChart({
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} stroke="rgba(146, 170, 198, 0.12)" />
-            <XAxis dataKey="year" tickLine={false} axisLine={false} />
+            <XAxis dataKey="year" tickLine={false} axisLine={false} tickMargin={10} />
             <YAxis
               tickLine={false}
               axisLine={false}

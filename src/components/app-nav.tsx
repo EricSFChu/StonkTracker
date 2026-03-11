@@ -15,6 +15,10 @@ const navItems = [
   {
     href: "/projections",
     label: "Projections"
+  },
+  {
+    href: "/compounding",
+    label: "Compounding"
   }
 ] as const;
 

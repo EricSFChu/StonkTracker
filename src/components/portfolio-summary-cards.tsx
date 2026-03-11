@@ -8,6 +8,8 @@ type PortfolioSummaryCardsProps = {
 export function PortfolioSummaryCards({
   snapshot
 }: PortfolioSummaryCardsProps) {
+  const refreshLabel = formatDateTime(snapshot.lastRefreshedAt);
+
   return (
     <section className="summary-grid">
       <article className="summary-card">
@@ -25,9 +27,11 @@ export function PortfolioSummaryCards({
         <strong>{formatCurrency(snapshot.unrealizedGain)}</strong>
       </article>
 
-      <article className="summary-card">
+      <article className="summary-card summary-card-refresh">
         <span>Last market refresh</span>
-        <strong>{formatDateTime(snapshot.lastRefreshedAt)}</strong>
+        <strong className="summary-timestamp" title={refreshLabel}>
+          {refreshLabel}
+        </strong>
         <small>{snapshot.pricedPositions} priced</small>
       </article>
     </section>

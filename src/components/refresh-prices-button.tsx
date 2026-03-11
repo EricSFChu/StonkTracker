@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { formatDateTime } from "@/lib/format";
+
 const TWELVE_DATA_BATCH_SIZE = 8;
 const TWELVE_DATA_DELAY_MS = 65_000;
 
@@ -210,8 +212,8 @@ export function RefreshPricesButton({
 
       <p className="refresh-meta">
         {compact
-          ? `Last refresh: ${lastRefreshAt ? new Date(lastRefreshAt).toLocaleString() : "Never"}`
-          : `Stored quote timestamp: ${lastRefreshAt ? new Date(lastRefreshAt).toLocaleString() : "Never"}`}
+          ? `Last refresh: ${formatDateTime(lastRefreshAt)}`
+          : `Stored quote timestamp: ${formatDateTime(lastRefreshAt)}`}
       </p>
 
       {batchingNote ? <p className="refresh-meta warning">{batchingNote}</p> : null}

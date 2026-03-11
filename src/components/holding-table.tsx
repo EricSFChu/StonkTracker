@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
 import { deleteHoldingAction, updateHoldingAction } from "@/app/actions";
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS, type Holding } from "@/lib/types";
@@ -7,6 +9,21 @@ import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS, type Holding } from "@/lib/types";
 type HoldingTableProps = {
   holdings: Holding[];
   editing?: boolean;
+};
+
+type SortKey =
+  | "symbol"
+  | "name"
+  | "accountType"
+  | "quantity"
+  | "costBasis"
+  | "lastPrice"
+  | "value"
+  | "updated";
+
+type SortState = {
+  key: SortKey | null;
+  direction: "asc" | "desc";
 };
 
 function marketValue(holding: Holding) {
@@ -21,7 +38,88 @@ function marketValue(holding: Holding) {
   return null;
 }
 
+function compareSortValues(
+  left: string | number | null,
+  right: string | number | null
+) {
+  if (left === null && right === null) {
+    return 0;
+  }
+
+  if (left === null) {
+    return 1;
+  }
+
+  if (right === null) {
+    return -1;
+  }
+
+  if (typeof left === "number" && typeof right === "number") {
+    return left - right;
+  }
+
+  return String(left).localeCompare(String(right), undefined, {
+    numeric: true,
+    sensitivity: "base"
+  });
+}
+
+function getSortValue(holding: Holding, key: SortKey) {
+  switch (key) {
+    case "symbol":
+      return holding.symbol;
+    case "name":
+      return holding.name;
+    case "accountType":
+      return ACCOUNT_TYPE_LABELS[holding.accountType];
+    case "quantity":
+      return holding.quantity;
+    case "costBasis":
+      return holding.costBasis;
+    case "lastPrice":
+      return holding.lastPrice;
+    case "value":
+      return marketValue(holding);
+    case "updated":
+      return holding.lastPriceUpdatedAt ? new Date(holding.lastPriceUpdatedAt).getTime() : null;
+    default:
+      return null;
+  }
+}
+
 export function HoldingTable({ holdings, editing = false }: HoldingTableProps) {
+  const [sortState, setSortState] = useState<SortState>({
+    key: null,
+    direction: "asc"
+  });
+
+  const sortedHoldings = useMemo(() => {
+    const activeSortKey = sortState.key;
+
+    if (!activeSortKey) {
+      return holdings;
+    }
+
+    return holdings
+      .map((holding, index) => ({
+        holding,
+        index
+      }))
+      .sort((left, right) => {
+        const comparison = compareSortValues(
+          getSortValue(left.holding, activeSortKey),
+          getSortValue(right.holding, activeSortKey)
+        );
+
+        if (comparison !== 0) {
+          return sortState.direction === "asc" ? comparison : -comparison;
+        }
+
+        return left.index - right.index;
+      })
+      .map((entry) => entry.holding);
+  }, [holdings, sortState]);
+
   if (!holdings.length) {
     return (
       <div className="empty-state">
@@ -30,22 +128,67 @@ export function HoldingTable({ holdings, editing = false }: HoldingTableProps) {
     );
   }
 
+  function toggleSort(key: SortKey) {
+    setSortState((current) => {
+      if (current.key !== key) {
+        return {
+          key,
+          direction: "asc"
+        };
+      }
+
+      if (current.direction === "asc") {
+        return {
+          key,
+          direction: "desc"
+        };
+      }
+
+      return {
+        key: null,
+        direction: "asc"
+      };
+    });
+  }
+
+  function sortLabel(label: string, key: SortKey, className?: string) {
+    const isActive = sortState.key === key;
+
+    return (
+      <button
+        className={`sort-button${isActive ? " active" : ""}${className ? ` ${className}` : ""}`}
+        type="button"
+        onClick={() => toggleSort(key)}
+      >
+        <span className="sort-indicator" aria-hidden="true">
+          <span
+            className={`sort-chevron up${isActive && sortState.direction === "asc" ? " active" : ""}`}
+          />
+          <span
+            className={`sort-chevron down${isActive && sortState.direction === "desc" ? " active" : ""}`}
+          />
+        </span>
+        <span>{label}</span>
+      </button>
+    );
+  }
+
   if (editing) {
     return (
       <div className="edit-shell">
         <div className="holdings-editor">
           <div className="holdings-editor-header">
-            <div className="editor-header-cell">Symbol</div>
-            <div className="editor-header-cell">Name</div>
-            <div className="editor-header-cell">Account</div>
-            <div className="editor-header-cell">Quantity</div>
-            <div className="editor-header-cell">Cost basis</div>
-            <div className="editor-header-cell">Last price</div>
-            <div className="editor-header-cell">Value</div>
+            <div className="editor-header-cell">{sortLabel("Symbol", "symbol")}</div>
+            <div className="editor-header-cell">{sortLabel("Name", "name")}</div>
+            <div className="editor-header-cell">{sortLabel("Account", "accountType")}</div>
+            <div className="editor-header-cell">{sortLabel("Quantity", "quantity")}</div>
+            <div className="editor-header-cell">{sortLabel("Cost basis", "costBasis")}</div>
+            <div className="editor-header-cell">{sortLabel("Last price", "lastPrice")}</div>
+            <div className="editor-header-cell">{sortLabel("Value", "value")}</div>
             <div className="editor-header-cell editor-header-actions">Actions</div>
           </div>
 
-          {holdings.map((holding) => {
+          {sortedHoldings.map((holding) => {
             const value = marketValue(holding);
             const currency = holding.currency ?? "USD";
             const updateFormId = `holding-update-${holding.id}`;
@@ -83,7 +226,11 @@ export function HoldingTable({ holdings, editing = false }: HoldingTableProps) {
 
                   <label className="field compact editor-cell">
                     <span className="sr-only">Account type</span>
-                    <select name="accountType" defaultValue={holding.accountType}>
+                    <select
+                      name="accountType"
+                      defaultValue={holding.accountType}
+                      onChange={(event) => event.currentTarget.form?.requestSubmit()}
+                    >
                       {ACCOUNT_TYPES.map((accountType) => (
                         <option key={accountType} value={accountType}>
                           {ACCOUNT_TYPE_LABELS[accountType]}
@@ -152,19 +299,35 @@ export function HoldingTable({ holdings, editing = false }: HoldingTableProps) {
       <table className="holdings-table">
         <thead>
           <tr>
-            <th>Symbol</th>
-            <th>Name</th>
-            <th>Account</th>
-            <th>Quantity</th>
-            <th>Cost basis</th>
-            <th>Last price</th>
-            <th>Value</th>
-            <th>Updated</th>
+            <th aria-sort={sortState.key === "symbol" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+              {sortLabel("Symbol", "symbol")}
+            </th>
+            <th aria-sort={sortState.key === "name" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+              {sortLabel("Name", "name")}
+            </th>
+            <th aria-sort={sortState.key === "accountType" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+              {sortLabel("Account", "accountType")}
+            </th>
+            <th aria-sort={sortState.key === "quantity" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+              {sortLabel("Quantity", "quantity")}
+            </th>
+            <th aria-sort={sortState.key === "costBasis" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+              {sortLabel("Cost basis", "costBasis")}
+            </th>
+            <th aria-sort={sortState.key === "lastPrice" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+              {sortLabel("Last price", "lastPrice")}
+            </th>
+            <th aria-sort={sortState.key === "value" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+              {sortLabel("Value", "value")}
+            </th>
+            <th aria-sort={sortState.key === "updated" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+              {sortLabel("Updated", "updated")}
+            </th>
             <th />
           </tr>
         </thead>
         <tbody>
-          {holdings.map((holding) => {
+          {sortedHoldings.map((holding) => {
             const value = marketValue(holding);
             const currency = holding.currency ?? "USD";
 

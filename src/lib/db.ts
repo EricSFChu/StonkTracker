@@ -26,6 +26,12 @@ function initDatabase(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS holdings_symbol_idx ON holdings(symbol);
     CREATE INDEX IF NOT EXISTS holdings_account_type_idx ON holdings(account_type);
+
+    CREATE TABLE IF NOT EXISTS projection_targets (
+      symbol TEXT PRIMARY KEY,
+      target_price REAL NOT NULL CHECK (target_price >= 0),
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 }
 

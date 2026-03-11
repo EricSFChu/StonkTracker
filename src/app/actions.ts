@@ -65,6 +65,7 @@ function revalidatePortfolioRoutes() {
   revalidatePath("/");
   revalidatePath("/holdings");
   revalidatePath("/projections");
+  revalidatePath("/compounding");
 }
 
 export async function createHoldingAction(formData: FormData) {

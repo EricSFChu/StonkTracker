@@ -21,8 +21,14 @@ export function formatDateTime(value: string | null) {
     return "Never";
   }
 
+  const date = new Date(value);
+  const includeYear = date.getFullYear() !== new Date().getFullYear();
+
   return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(value));
+    month: "short",
+    day: "numeric",
+    ...(includeYear ? { year: "numeric" as const } : {}),
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(date);
 }

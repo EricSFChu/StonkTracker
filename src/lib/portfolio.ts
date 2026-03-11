@@ -1,5 +1,16 @@
 import type { Holding } from "@/lib/types";
 
+export type ProjectedAsset = {
+  symbol: string;
+  label: string;
+  name: string | null;
+  quantity: number;
+  currentPrice: number;
+  currentValue: number;
+  currency: string;
+  lastPriceUpdatedAt: string | null;
+};
+
 function holdingValue(holding: Holding) {
   if (holding.lastPrice !== null) {
     return holding.lastPrice * holding.quantity;
@@ -18,6 +29,65 @@ function costTotal(holding: Holding) {
   }
 
   return holding.costBasis * holding.quantity;
+}
+
+function formatAssetLabel(symbol: string) {
+  if (symbol.endsWith("-USD")) {
+    return symbol.slice(0, -4);
+  }
+
+  return symbol;
+}
+
+export function getProjectedAssets(holdings: Holding[]): ProjectedAsset[] {
+  const assetMap = new Map<
+    string,
+    {
+      symbol: string;
+      label: string;
+      name: string | null;
+      quantity: number;
+      currentValue: number;
+      currency: string;
+      lastPriceUpdatedAt: string | null;
+    }
+  >();
+
+  for (const holding of holdings) {
+    const existing = assetMap.get(holding.symbol);
+    const currentValue = holdingValue(holding);
+    const currency = holding.currency ?? "USD";
+
+    if (!existing) {
+      assetMap.set(holding.symbol, {
+        symbol: holding.symbol,
+        label: formatAssetLabel(holding.symbol),
+        name: holding.name,
+        quantity: holding.quantity,
+        currentValue,
+        currency,
+        lastPriceUpdatedAt: holding.lastPriceUpdatedAt
+      });
+      continue;
+    }
+
+    existing.quantity += holding.quantity;
+    existing.currentValue += currentValue;
+    existing.name = existing.name ?? holding.name;
+    existing.lastPriceUpdatedAt =
+      existing.lastPriceUpdatedAt && holding.lastPriceUpdatedAt
+        ? new Date(existing.lastPriceUpdatedAt) > new Date(holding.lastPriceUpdatedAt)
+          ? existing.lastPriceUpdatedAt
+          : holding.lastPriceUpdatedAt
+        : existing.lastPriceUpdatedAt ?? holding.lastPriceUpdatedAt;
+  }
+
+  return Array.from(assetMap.values())
+    .map((asset) => ({
+      ...asset,
+      currentPrice: asset.quantity > 0 ? asset.currentValue / asset.quantity : 0
+    }))
+    .sort((left, right) => right.currentValue - left.currentValue);
 }
 
 export function getRefreshQueueSymbols(holdings: Holding[]) {
@@ -89,7 +159,7 @@ export function getPortfolioSnapshot(holdings: Holding[]) {
     const assetKey = holding.symbol;
     const current = assetMap.get(assetKey);
     assetMap.set(assetKey, {
-      label: holding.symbol,
+      label: formatAssetLabel(holding.symbol),
       value: (current?.value ?? 0) + value
     });
   }
