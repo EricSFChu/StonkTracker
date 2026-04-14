@@ -17,16 +17,56 @@ type ProjectionChartProps = {
   startingValue: number;
 };
 
+type ProjectionPoint = {
+  year: number;
+  projectedValue: number;
+  capitalAdded: number;
+  investmentGain: number;
+};
+
+function buildProjectionData(
+  startingValue: number,
+  annualRate: number,
+  years: number,
+  annualContribution: number
+): ProjectionPoint[] {
+  const normalizedContribution =
+    Number.isFinite(annualContribution) && annualContribution > 0 ? annualContribution : 0;
+  const data: ProjectionPoint[] = [
+    {
+      year: 0,
+      projectedValue: startingValue,
+      capitalAdded: 0,
+      investmentGain: 0
+    }
+  ];
+
+  let projectedValue = startingValue;
+
+  for (let year = 1; year <= years; year += 1) {
+    // Apply the annual return first, then add fresh capital for that year.
+    projectedValue = projectedValue * (1 + annualRate / 100) + normalizedContribution;
+
+    data.push({
+      year,
+      projectedValue,
+      capitalAdded: normalizedContribution * year,
+      investmentGain: projectedValue - startingValue - normalizedContribution * year
+    });
+  }
+
+  return data;
+}
+
 export function ProjectionChart({
   startingValue
 }: ProjectionChartProps) {
   const [rate, setRate] = useState(8);
   const [years, setYears] = useState(10);
+  const [annualContribution, setAnnualContribution] = useState(0);
 
-  const projectionData = Array.from({ length: years + 1 }, (_, year) => ({
-    year,
-    projectedValue: startingValue * Math.pow(1 + rate / 100, year)
-  }));
+  const projectionData = buildProjectionData(startingValue, rate, years, annualContribution);
+  const finalProjection = projectionData[projectionData.length - 1];
 
   return (
     <section className="panel chart-panel projection-panel">
@@ -63,6 +103,23 @@ export function ProjectionChart({
           />
           <strong>{years}</strong>
         </label>
+
+        <label className="field compact">
+          <span>Yearly capital add</span>
+          <input
+            type="number"
+            min="0"
+            step="100"
+            value={annualContribution}
+            onChange={(event) => {
+              const nextValue = Number(event.target.value);
+              setAnnualContribution(
+                Number.isFinite(nextValue) && nextValue >= 0 ? nextValue : 0
+              );
+            }}
+          />
+          <strong>{formatCurrency(annualContribution)}</strong>
+        </label>
       </div>
 
       <div className="projection-highlight">
@@ -71,9 +128,17 @@ export function ProjectionChart({
           <strong>{formatCurrency(startingValue)}</strong>
         </div>
         <div>
+          <span>Total capital added</span>
+          <strong>{formatCurrency(finalProjection?.capitalAdded ?? 0)}</strong>
+        </div>
+        <div>
+          <span>Investment gain</span>
+          <strong>{formatCurrency(finalProjection?.investmentGain ?? 0)}</strong>
+        </div>
+        <div>
           <span>Projected value</span>
           <strong>
-            {formatCurrency(projectionData[projectionData.length - 1]?.projectedValue ?? 0)}
+            {formatCurrency(finalProjection?.projectedValue ?? 0)}
           </strong>
         </div>
       </div>

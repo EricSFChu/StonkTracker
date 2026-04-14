@@ -17,7 +17,7 @@ export default function CompoundingPage() {
       <PageIntro
         eyebrow="Compounding"
         title="Compounding"
-        description="Project compound growth across your current portfolio value."
+        description="Project compound growth across your current portfolio value with yearly capital adds."
       />
 
       <section className="mini-stat-grid wide">
@@ -29,7 +29,7 @@ export default function CompoundingPage() {
         <article className="callout">
           <span>10-year at 8%</span>
           <strong>{formatCurrency(baseTenYearProjection)}</strong>
-          <small>Reference scenario before you change the sliders.</small>
+          <small>Reference scenario before you change the controls.</small>
         </article>
         <article className="callout">
           <span>Quoted positions</span>
