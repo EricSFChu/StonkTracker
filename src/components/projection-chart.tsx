@@ -275,7 +275,7 @@ export function ProjectionChart({
               top: 8,
               right: 8,
               bottom: 12,
-              left: 8
+              left: 16
             }}
           >
             <defs>
@@ -289,6 +289,8 @@ export function ProjectionChart({
             <YAxis
               tickLine={false}
               axisLine={false}
+              width={112}
+              tickMargin={10}
               tickFormatter={(value: number) => formatCurrency(value)}
             />
             <Tooltip formatter={(value: number) => formatCurrency(value)} />
