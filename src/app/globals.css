@@ -382,12 +382,14 @@ code,
   gap: 14px;
 }
 
+.chart-panel-surface,
 .allocation-panel-surface {
   display: grid;
   gap: 14px;
   cursor: pointer;
 }
 
+.chart-panel-surface:focus-visible,
 .allocation-panel-surface:focus-visible {
   outline: 2px solid rgba(255, 140, 66, 0.7);
   outline-offset: 8px;
@@ -443,6 +445,38 @@ code,
   width: 12px;
   height: 12px;
   border-radius: 999px;
+}
+
+.chart-tooltip {
+  min-width: 148px;
+  padding: 12px 14px;
+  border: 1px solid rgba(155, 178, 205, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(12, 27, 43, 0.96), rgba(7, 16, 29, 0.96));
+  box-shadow: var(--shadow);
+}
+
+.chart-tooltip-title,
+.chart-tooltip-value,
+.chart-tooltip-meta {
+  margin: 0;
+}
+
+.chart-tooltip-title {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.chart-tooltip-value {
+  color: var(--text);
+  font-family: var(--font-mono), monospace;
+}
+
+.chart-tooltip-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .segment-control {
@@ -519,8 +553,16 @@ code,
   min-height: 0;
 }
 
+.modal-body-chart-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .modal-chart {
   min-height: 420px;
+}
+
+.modal-chart-wide {
+  min-height: 460px;
 }
 
 .modal-legend {
@@ -547,6 +589,11 @@ code,
 
 .account-list-row span {
   color: var(--muted);
+}
+
+.position-breakdown {
+  display: grid;
+  gap: 4px;
 }
 
 .form-grid {

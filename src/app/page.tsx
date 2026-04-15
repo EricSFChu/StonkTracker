@@ -22,7 +22,7 @@ export default function HomePage() {
           accountData={snapshot.accountAllocation}
           assetData={snapshot.assetAllocation}
         />
-        <TopAssetsChart data={snapshot.topAssets} />
+        <TopAssetsChart data={snapshot.assetAllocation} />
       </section>
     </div>
   );

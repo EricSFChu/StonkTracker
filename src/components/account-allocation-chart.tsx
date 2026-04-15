@@ -18,8 +18,10 @@ type AllocationDatum = {
 };
 
 type AssetAllocationDatum = {
+  symbol: string;
   label: string;
   value: number;
+  quantity: number;
 };
 
 type AccountAllocationChartProps = {
@@ -88,7 +90,7 @@ export function AccountAllocationChart({ accountData, assetData }: AccountAlloca
   }));
 
   const normalizedAssetData = assetData.map((entry) => ({
-    key: entry.label,
+    key: entry.symbol,
     label: entry.label,
     value: entry.value
   }));

@@ -132,6 +132,13 @@ export function getRefreshQueueSymbols(holdings: Holding[]) {
     .map(([symbol]) => symbol);
 }
 
+export type PortfolioAssetBreakdown = {
+  symbol: string;
+  label: string;
+  value: number;
+  quantity: number;
+};
+
 export function getPortfolioSnapshot(holdings: Holding[]) {
   const totalValue = holdings.reduce((sum, holding) => sum + holdingValue(holding), 0);
   const totalCost = holdings.reduce((sum, holding) => sum + costTotal(holding), 0);
@@ -150,7 +157,7 @@ export function getPortfolioSnapshot(holdings: Holding[]) {
   }, null);
 
   const allocationMap = new Map<string, number>();
-  const assetMap = new Map<string, { label: string; value: number }>();
+  const assetMap = new Map<string, PortfolioAssetBreakdown>();
 
   for (const holding of holdings) {
     const value = holdingValue(holding);
@@ -159,8 +166,10 @@ export function getPortfolioSnapshot(holdings: Holding[]) {
     const assetKey = holding.symbol;
     const current = assetMap.get(assetKey);
     assetMap.set(assetKey, {
+      symbol: assetKey,
       label: formatAssetLabel(holding.symbol),
-      value: (current?.value ?? 0) + value
+      value: (current?.value ?? 0) + value,
+      quantity: (current?.quantity ?? 0) + holding.quantity
     });
   }
 
