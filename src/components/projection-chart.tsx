@@ -64,6 +64,12 @@ function buildProjectionData(
   return data;
 }
 
+function buildAxisTicks(maxValue: number, step: number) {
+  const ceiling = Math.max(step, Math.ceil(maxValue / step) * step);
+
+  return Array.from({ length: Math.floor(ceiling / step) + 1 }, (_, index) => index * step);
+}
+
 function buildSettingsSignature(settings: CompoundingSettings) {
   return JSON.stringify(settings);
 }
@@ -173,6 +179,10 @@ export function ProjectionChart({
     currentSettings.annualRate,
     currentSettings.years,
     currentSettings.annualContribution
+  );
+  const axisTicks = buildAxisTicks(
+    projectionData.reduce((largest, entry) => Math.max(largest, entry.projectedValue), 0),
+    250_000
   );
   const finalProjection = projectionData[projectionData.length - 1];
 
@@ -291,6 +301,8 @@ export function ProjectionChart({
               axisLine={false}
               width={112}
               tickMargin={10}
+              domain={[0, axisTicks[axisTicks.length - 1] ?? 250_000]}
+              ticks={axisTicks}
               tickFormatter={(value: number) => formatCurrency(value)}
             />
             <Tooltip formatter={(value: number) => formatCurrency(value)} />

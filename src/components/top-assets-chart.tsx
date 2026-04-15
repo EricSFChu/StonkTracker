@@ -45,6 +45,12 @@ function AssetTooltip({ active, payload }: AssetTooltipProps) {
   );
 }
 
+function buildAxisTicks(maxValue: number, step: number) {
+  const ceiling = Math.max(step, Math.ceil(maxValue / step) * step);
+
+  return Array.from({ length: Math.floor(ceiling / step) + 1 }, (_, index) => index * step);
+}
+
 export function TopAssetsChart({ data }: TopAssetsChartProps) {
   const [isOpen, setIsOpen] = useState(false);
   const panelData = data.slice(0, 8);
@@ -73,6 +79,11 @@ export function TopAssetsChart({ data }: TopAssetsChartProps) {
   }, [isOpen]);
 
   function renderChart(chartData: PortfolioAssetBreakdown[], large = false) {
+    const axisTicks = buildAxisTicks(
+      chartData.reduce((largest, entry) => Math.max(largest, entry.value), 0),
+      25_000
+    );
+
     return (
       <ResponsiveContainer width="100%" height={large ? 460 : 280}>
         <BarChart
@@ -111,6 +122,8 @@ export function TopAssetsChart({ data }: TopAssetsChartProps) {
             axisLine={false}
             width={92}
             tickMargin={10}
+            domain={[0, axisTicks[axisTicks.length - 1] ?? 25_000]}
+            ticks={axisTicks}
             tickFormatter={(value: number) => formatCurrency(value)}
           />
           <Tooltip content={<AssetTooltip />} />
