@@ -32,6 +32,14 @@ function initDatabase(db: Database.Database) {
       target_price REAL NOT NULL CHECK (target_price >= 0),
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS compounding_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      annual_rate REAL NOT NULL CHECK (annual_rate >= 0 AND annual_rate <= 120),
+      years INTEGER NOT NULL CHECK (years >= 1 AND years <= 60),
+      annual_contribution REAL NOT NULL CHECK (annual_contribution >= 0),
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 }
 

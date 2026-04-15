@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -11,10 +11,16 @@ import {
   YAxis
 } from "recharts";
 
+import {
+  DEFAULT_COMPOUNDING_SETTINGS,
+  normalizeCompoundingSettings,
+  type CompoundingSettings
+} from "@/lib/compounding";
 import { formatCurrency, formatPercent } from "@/lib/format";
 
 type ProjectionChartProps = {
   startingValue: number;
+  initialSettings: CompoundingSettings;
 };
 
 type ProjectionPoint = {
@@ -58,14 +64,116 @@ function buildProjectionData(
   return data;
 }
 
-export function ProjectionChart({
-  startingValue
-}: ProjectionChartProps) {
-  const [rate, setRate] = useState(8);
-  const [years, setYears] = useState(10);
-  const [annualContribution, setAnnualContribution] = useState(0);
+function buildSettingsSignature(settings: CompoundingSettings) {
+  return JSON.stringify(settings);
+}
 
-  const projectionData = buildProjectionData(startingValue, rate, years, annualContribution);
+export function ProjectionChart({
+  startingValue,
+  initialSettings
+}: ProjectionChartProps) {
+  const normalizedInitialSettings = normalizeCompoundingSettings(initialSettings);
+  const [rate, setRate] = useState(normalizedInitialSettings.annualRate);
+  const [years, setYears] = useState(normalizedInitialSettings.years);
+  const [annualContribution, setAnnualContribution] = useState(
+    normalizedInitialSettings.annualContribution
+  );
+  const [persistedSignature, setPersistedSignature] = useState(() =>
+    buildSettingsSignature(normalizedInitialSettings)
+  );
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const saveRequestId = useRef(0);
+
+  useEffect(() => {
+    const nextSettings = normalizeCompoundingSettings(initialSettings);
+    setRate(nextSettings.annualRate);
+    setYears(nextSettings.years);
+    setAnnualContribution(nextSettings.annualContribution);
+    setPersistedSignature(buildSettingsSignature(nextSettings));
+    setSaveState("idle");
+    setSaveMessage(null);
+  }, [initialSettings]);
+
+  const currentSettings = normalizeCompoundingSettings({
+    annualRate: rate,
+    years,
+    annualContribution
+  });
+  const currentSignature = buildSettingsSignature(currentSettings);
+
+  async function persistSettings(nextSettings: CompoundingSettings) {
+    const payload = normalizeCompoundingSettings(nextSettings);
+    const signature = buildSettingsSignature(payload);
+
+    if (signature === persistedSignature) {
+      setSaveState("saved");
+      setSaveMessage("Saved");
+      return;
+    }
+
+    setSaveState("saving");
+    setSaveMessage("Saving assumptions...");
+
+    const requestId = saveRequestId.current + 1;
+    saveRequestId.current = requestId;
+
+    try {
+      const response = await fetch("/api/compounding/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (requestId !== saveRequestId.current) {
+        return;
+      }
+
+      if (!response.ok) {
+        setSaveState("error");
+        setSaveMessage("Save failed");
+        return;
+      }
+
+      setPersistedSignature(signature);
+      setSaveState("saved");
+      setSaveMessage("Saved");
+    } catch {
+      if (requestId !== saveRequestId.current) {
+        return;
+      }
+
+      setSaveState("error");
+      setSaveMessage("Save failed");
+    }
+  }
+
+  useEffect(() => {
+    if (currentSignature === persistedSignature) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void persistSettings(currentSettings);
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    currentSettings.annualContribution,
+    currentSettings.annualRate,
+    currentSettings.years,
+    currentSignature,
+    persistedSignature
+  ]);
+
+  const projectionData = buildProjectionData(
+    startingValue,
+    currentSettings.annualRate,
+    currentSettings.years,
+    currentSettings.annualContribution
+  );
   const finalProjection = projectionData[projectionData.length - 1];
 
   return (
@@ -75,6 +183,17 @@ export function ProjectionChart({
           <p className="eyebrow">Projection</p>
           <h2>Forward value model</h2>
         </div>
+        <button
+          className="button ghost"
+          type="button"
+          onClick={() => {
+            setRate(DEFAULT_COMPOUNDING_SETTINGS.annualRate);
+            setYears(DEFAULT_COMPOUNDING_SETTINGS.years);
+            setAnnualContribution(DEFAULT_COMPOUNDING_SETTINGS.annualContribution);
+          }}
+        >
+          Reset assumptions
+        </button>
       </div>
 
       <div className="projection-controls">
@@ -85,10 +204,10 @@ export function ProjectionChart({
             min="0"
             max="120"
             step="0.5"
-            value={rate}
+            value={currentSettings.annualRate}
             onChange={(event) => setRate(Number(event.target.value))}
           />
-          <strong>{formatPercent(rate)}</strong>
+          <strong>{formatPercent(currentSettings.annualRate)}</strong>
         </label>
 
         <label className="field compact">
@@ -98,10 +217,10 @@ export function ProjectionChart({
             min="1"
             max="60"
             step="1"
-            value={years}
+            value={currentSettings.years}
             onChange={(event) => setYears(Number(event.target.value))}
           />
-          <strong>{years}</strong>
+          <strong>{currentSettings.years}</strong>
         </label>
 
         <label className="field compact">
@@ -110,7 +229,7 @@ export function ProjectionChart({
             type="number"
             min="0"
             step="100"
-            value={annualContribution}
+            value={currentSettings.annualContribution}
             onChange={(event) => {
               const nextValue = Number(event.target.value);
               setAnnualContribution(
@@ -118,8 +237,13 @@ export function ProjectionChart({
               );
             }}
           />
-          <strong>{formatCurrency(annualContribution)}</strong>
+          <strong>{formatCurrency(currentSettings.annualContribution)}</strong>
         </label>
+      </div>
+
+      <div className="mini-meta">
+        <span>Assumptions auto-save for the next visit</span>
+        {saveMessage ? <span className={`save-status ${saveState}`}>{saveMessage}</span> : null}
       </div>
 
       <div className="projection-highlight">

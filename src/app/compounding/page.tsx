@@ -1,6 +1,6 @@
 import { ProjectionChart } from "@/components/projection-chart";
-import { TopAssetsChart } from "@/components/top-assets-chart";
 import { PageIntro } from "@/components/page-intro";
+import { getCompoundingSettings } from "@/lib/compounding-settings";
 import { formatCurrency } from "@/lib/format";
 import { listHoldings } from "@/lib/holdings";
 import { getPortfolioSnapshot } from "@/lib/portfolio";
@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default function CompoundingPage() {
   const holdings = listHoldings();
   const snapshot = getPortfolioSnapshot(holdings);
+  const compoundingSettings = getCompoundingSettings();
   const baseTenYearProjection = snapshot.totalValue * Math.pow(1.08, 10);
 
   return (
@@ -38,9 +39,10 @@ export default function CompoundingPage() {
         </article>
       </section>
 
-      <ProjectionChart startingValue={snapshot.totalValue} />
-
-      <TopAssetsChart data={snapshot.topAssets} />
+      <ProjectionChart
+        startingValue={snapshot.totalValue}
+        initialSettings={compoundingSettings}
+      />
     </div>
   );
 }
