@@ -300,6 +300,10 @@ function formatRefreshAt(value: string | null) {
   }).format(new Date(value));
 }
 
+function formatWeightPercent(value: number) {
+  return `${value.toFixed(2)}%`;
+}
+
 function buildCombinedHoldingRows(holdings: ReportHoldingRow[]) {
   const combinedBySymbol = new Map<string, CombinedHoldingRow>();
 
@@ -378,6 +382,7 @@ function buildCoverPage(report: PortfolioReportData, reportTitle: string) {
 
 function buildCombinedHoldingsPages(report: PortfolioReportData) {
   const combinedHoldings = buildCombinedHoldingRows(report.holdings);
+  const portfolioValue = report.snapshot.totalValue;
 
   if (!combinedHoldings.length) {
     return [];
@@ -387,33 +392,41 @@ function buildCombinedHoldingsPages(report: PortfolioReportData) {
   const columns: TableColumn<CombinedHoldingRow>[] = [
     {
       label: "Symbol",
-      width: 72,
+      width: 64,
       value: (row) => row.symbol,
       font: "F2"
     },
     {
       label: "Name",
-      width: 190,
+      width: 152,
       value: (row) => row.name ?? "Unlabeled holding"
     },
     {
       label: "Shares",
-      width: 84,
+      width: 74,
       value: (row) => formatNumber(row.quantity),
       align: "right",
       font: "F3"
     },
     {
       label: "Price",
-      width: 80,
+      width: 78,
       value: (row) => (row.currentPrice !== null ? formatCurrency(row.currentPrice) : "N/A"),
       align: "right",
       font: "F3"
     },
     {
       label: "Value",
-      width: 90,
+      width: 92,
       value: (row) => formatCurrency(row.marketValue),
+      align: "right",
+      font: "F3"
+    },
+    {
+      label: "Weight",
+      width: 56,
+      value: (row) =>
+        formatWeightPercent(portfolioValue > 0 ? (row.marketValue / portfolioValue) * 100 : 0),
       align: "right",
       font: "F3"
     }
