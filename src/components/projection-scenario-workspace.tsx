@@ -20,6 +20,33 @@ type ProjectionScenarioWorkspaceProps = {
   initialTargets: Record<string, number>;
 };
 
+type ScenarioComparisonDatum = {
+  label: string;
+  currentValue: number;
+  projectedValue: number;
+};
+
+type ScenarioImpactDatum = {
+  label: string;
+  deltaValue: number;
+};
+
+type ScenarioComparisonTooltipProps = {
+  active?: boolean;
+  payload?: Array<{
+    name?: string;
+    value?: number;
+    payload: ScenarioComparisonDatum;
+  }>;
+};
+
+type ScenarioImpactTooltipProps = {
+  active?: boolean;
+  payload?: Array<{
+    payload: ScenarioImpactDatum;
+  }>;
+};
+
 function formatPriceInput(value: number) {
   if (!Number.isFinite(value)) {
     return "";
@@ -81,6 +108,54 @@ function buildProjectionPayload(
       }))
     )
   };
+}
+
+function ScenarioComparisonTooltip({
+  active,
+  payload
+}: ScenarioComparisonTooltipProps) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const entry = payload[0]?.payload;
+
+  if (!entry) {
+    return null;
+  }
+
+  return (
+    <div className="chart-tooltip">
+      <p className="chart-tooltip-title">{entry.label}</p>
+      <p className="chart-tooltip-value">Projected: {formatCurrency(entry.projectedValue)}</p>
+      <p className="chart-tooltip-meta">Current: {formatCurrency(entry.currentValue)}</p>
+      <p className="chart-tooltip-meta">
+        Net change: {formatCurrency(entry.projectedValue - entry.currentValue)}
+      </p>
+    </div>
+  );
+}
+
+function ScenarioImpactTooltip({ active, payload }: ScenarioImpactTooltipProps) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const entry = payload[0]?.payload;
+
+  if (!entry) {
+    return null;
+  }
+
+  return (
+    <div className="chart-tooltip">
+      <p className="chart-tooltip-title">{entry.label}</p>
+      <p className="chart-tooltip-value">{formatCurrency(entry.deltaValue)}</p>
+      <p className="chart-tooltip-meta">
+        {entry.deltaValue >= 0 ? "Positive scenario impact" : "Negative scenario impact"}
+      </p>
+    </div>
+  );
 }
 
 export function ProjectionScenarioWorkspace({
@@ -209,13 +284,13 @@ export function ProjectionScenarioWorkspace({
     };
   }, [scenarioAssets]);
 
-  const comparisonData = scenarioAssets.slice(0, 8).map((asset) => ({
+  const comparisonData: ScenarioComparisonDatum[] = scenarioAssets.slice(0, 8).map((asset) => ({
     label: asset.label,
     currentValue: asset.currentValue,
     projectedValue: asset.projectedValue
   }));
 
-  const impactData = scenarioAssets
+  const impactData: ScenarioImpactDatum[] = scenarioAssets
     .filter((asset) => Math.abs(asset.deltaValue) > 0.005)
     .sort((left, right) => Math.abs(right.deltaValue) - Math.abs(left.deltaValue))
     .slice(0, 8)
@@ -302,7 +377,7 @@ export function ProjectionScenarioWorkspace({
                   axisLine={false}
                   width={72}
                 />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Tooltip content={<ScenarioComparisonTooltip />} />
                 <Bar dataKey="currentValue" name="Current" fill="#2f7df6" radius={[0, 10, 10, 0]} />
                 <Bar
                   dataKey="projectedValue"
@@ -343,7 +418,7 @@ export function ProjectionScenarioWorkspace({
                   axisLine={false}
                   width={72}
                 />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Tooltip content={<ScenarioImpactTooltip />} />
                 <Bar dataKey="deltaValue" radius={[0, 10, 10, 0]}>
                   {impactData.map((entry) => (
                     <Cell

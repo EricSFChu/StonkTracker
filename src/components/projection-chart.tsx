@@ -30,6 +30,13 @@ type ProjectionPoint = {
   investmentGain: number;
 };
 
+type ProjectionTooltipProps = {
+  active?: boolean;
+  payload?: Array<{
+    payload: ProjectionPoint;
+  }>;
+};
+
 function buildProjectionData(
   startingValue: number,
   annualRate: number,
@@ -72,6 +79,27 @@ function buildAxisTicks(maxValue: number, step: number) {
 
 function buildSettingsSignature(settings: CompoundingSettings) {
   return JSON.stringify(settings);
+}
+
+function ProjectionTooltip({ active, payload }: ProjectionTooltipProps) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const point = payload[0]?.payload;
+
+  if (!point) {
+    return null;
+  }
+
+  return (
+    <div className="chart-tooltip">
+      <p className="chart-tooltip-title">Year {point.year}</p>
+      <p className="chart-tooltip-value">{formatCurrency(point.projectedValue)}</p>
+      <p className="chart-tooltip-meta">Capital added: {formatCurrency(point.capitalAdded)}</p>
+      <p className="chart-tooltip-meta">Investment gain: {formatCurrency(point.investmentGain)}</p>
+    </div>
+  );
 }
 
 export function ProjectionChart({
@@ -305,7 +333,7 @@ export function ProjectionChart({
               ticks={axisTicks}
               tickFormatter={(value: number) => formatCurrency(value)}
             />
-            <Tooltip formatter={(value: number) => formatCurrency(value)} />
+            <Tooltip content={<ProjectionTooltip />} />
             <Area
               type="monotone"
               dataKey="projectedValue"
