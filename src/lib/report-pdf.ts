@@ -629,7 +629,6 @@ function buildCompoundingPages(report: PortfolioReportData) {
       width: 62,
       value: (row) => `${row.year}`,
       align: "right",
-      headerAlign: "center",
       font: "F3"
     },
     {
@@ -637,7 +636,6 @@ function buildCompoundingPages(report: PortfolioReportData) {
       width: 154,
       value: (row) => formatCurrency(row.projectedValue),
       align: "right",
-      headerAlign: "center",
       font: "F3"
     },
     {
@@ -645,7 +643,6 @@ function buildCompoundingPages(report: PortfolioReportData) {
       width: 140,
       value: (row) => formatCurrency(row.capitalAdded),
       align: "right",
-      headerAlign: "center",
       font: "F3"
     },
     {
@@ -653,7 +650,6 @@ function buildCompoundingPages(report: PortfolioReportData) {
       width: 160,
       value: (row) => formatCurrency(row.investmentGain),
       align: "right",
-      headerAlign: "center",
       font: "F3"
     }
   ];
