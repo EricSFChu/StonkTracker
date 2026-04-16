@@ -19,6 +19,10 @@ const navItems = [
   {
     href: "/compounding",
     label: "Compounding"
+  },
+  {
+    href: "/reports",
+    label: "Reports"
   }
 ] as const;
 

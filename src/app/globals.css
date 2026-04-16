@@ -257,6 +257,79 @@ code,
   justify-content: flex-end;
 }
 
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.report-controls {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.report-name-field {
+  min-width: min(320px, 100%);
+}
+
+.report-panel-body {
+  margin-top: 20px;
+}
+
+.report-outline-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-outline-list.report-panel-body {
+  margin-top: 20px;
+}
+
+.report-outline-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(155, 178, 205, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.report-outline-step {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(255, 140, 66, 0.18);
+  color: #ffd7bd;
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
+}
+
+.report-outline-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.report-outline-copy strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.report-outline-copy p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .button {
   display: inline-flex;
   align-items: center;

@@ -13,7 +13,9 @@ import {
 
 import {
   DEFAULT_COMPOUNDING_SETTINGS,
+  buildCompoundingProjectionData,
   normalizeCompoundingSettings,
+  type CompoundingProjectionPoint,
   type CompoundingSettings
 } from "@/lib/compounding";
 import { formatCurrency, formatPercent } from "@/lib/format";
@@ -23,53 +25,12 @@ type ProjectionChartProps = {
   initialSettings: CompoundingSettings;
 };
 
-type ProjectionPoint = {
-  year: number;
-  projectedValue: number;
-  capitalAdded: number;
-  investmentGain: number;
-};
-
 type ProjectionTooltipProps = {
   active?: boolean;
   payload?: Array<{
-    payload: ProjectionPoint;
+    payload: CompoundingProjectionPoint;
   }>;
 };
-
-function buildProjectionData(
-  startingValue: number,
-  annualRate: number,
-  years: number,
-  annualContribution: number
-): ProjectionPoint[] {
-  const normalizedContribution =
-    Number.isFinite(annualContribution) && annualContribution > 0 ? annualContribution : 0;
-  const data: ProjectionPoint[] = [
-    {
-      year: 0,
-      projectedValue: startingValue,
-      capitalAdded: 0,
-      investmentGain: 0
-    }
-  ];
-
-  let projectedValue = startingValue;
-
-  for (let year = 1; year <= years; year += 1) {
-    // Apply the annual return first, then add fresh capital for that year.
-    projectedValue = projectedValue * (1 + annualRate / 100) + normalizedContribution;
-
-    data.push({
-      year,
-      projectedValue,
-      capitalAdded: normalizedContribution * year,
-      investmentGain: projectedValue - startingValue - normalizedContribution * year
-    });
-  }
-
-  return data;
-}
 
 function buildAxisTicks(maxValue: number, step: number) {
   const ceiling = Math.max(step, Math.ceil(maxValue / step) * step);
@@ -202,12 +163,7 @@ export function ProjectionChart({
     persistedSignature
   ]);
 
-  const projectionData = buildProjectionData(
-    startingValue,
-    currentSettings.annualRate,
-    currentSettings.years,
-    currentSettings.annualContribution
-  );
+  const projectionData = buildCompoundingProjectionData(startingValue, currentSettings);
   const axisTicks = buildAxisTicks(
     projectionData.reduce((largest, entry) => Math.max(largest, entry.projectedValue), 0),
     250_000
