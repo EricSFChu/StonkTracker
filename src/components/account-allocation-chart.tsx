@@ -9,7 +9,7 @@ import {
   Tooltip
 } from "recharts";
 
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { ACCOUNT_TYPE_LABELS } from "@/lib/types";
 
 type AllocationDatum = {
@@ -39,6 +39,14 @@ type NormalizedAllocationDatum = {
   value: number;
 };
 
+type AllocationTooltipProps = {
+  active?: boolean;
+  payload?: Array<{
+    payload: NormalizedAllocationDatum;
+  }>;
+  total: number;
+};
+
 function summarizeAllocation(data: NormalizedAllocationDatum[], maxItems: number) {
   if (data.length <= maxItems) {
     return data;
@@ -55,6 +63,28 @@ function summarizeAllocation(data: NormalizedAllocationDatum[], maxItems: number
       value: otherValue
     }
   ];
+}
+
+function AllocationTooltip({ active, payload, total }: AllocationTooltipProps) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const entry = payload[0]?.payload;
+
+  if (!entry) {
+    return null;
+  }
+
+  const shareOfTotal = total > 0 ? (entry.value / total) * 100 : 0;
+
+  return (
+    <div className="chart-tooltip">
+      <p className="chart-tooltip-title">{entry.label}</p>
+      <p className="chart-tooltip-value">{formatCurrency(entry.value)}</p>
+      <p className="chart-tooltip-meta">{formatPercent(shareOfTotal)} of portfolio</p>
+    </div>
+  );
 }
 
 export function AccountAllocationChart({ accountData, assetData }: AccountAllocationChartProps) {
@@ -100,6 +130,8 @@ export function AccountAllocationChart({ accountData, assetData }: AccountAlloca
   const modalData = summarizeAllocation(fullData, view === "accounts" ? 8 : 12);
 
   function renderChart(data: NormalizedAllocationDatum[], large = false) {
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+
     return (
       <ResponsiveContainer width="100%" height={large ? 420 : 280}>
         <PieChart>
@@ -115,10 +147,7 @@ export function AccountAllocationChart({ accountData, assetData }: AccountAlloca
               <Cell key={entry.key} fill={palette[index % palette.length]} />
             ))}
           </Pie>
-          <Tooltip
-            formatter={(value: number) => formatCurrency(value)}
-            labelFormatter={(label: string) => label}
-          />
+          <Tooltip content={<AllocationTooltip total={total} />} />
         </PieChart>
       </ResponsiveContainer>
     );
