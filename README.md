@@ -4,12 +4,15 @@ SQLite-backed Next.js portfolio tracker for stocks, ETFs, and crypto symbols.
 
 ## Features
 
-- Save holdings across `Individual`, `Crypto`, `Trad IRA`, `Roth IRA`, and `401(k)` accounts
-- Persist everything locally in `data/stonktracker.sqlite`
-- Refresh quotes only when the user presses a button
-- Use Twelve Data with a free API key and stale-first batched refreshes
-- Fall back to Yahoo Finance when no key is configured
-- View account allocation, top positions, and a simple future value projection
+- Track stocks, ETFs, and crypto across `Individual`, `Crypto`, `Trad IRA`, `Roth IRA`, and `401(k)` accounts
+- Persist holdings, saved projection targets, and compounding assumptions locally in `data/stonktracker.sqlite`
+- Refresh quotes only when the user presses a button, with stale-first batched updates
+- Use Twelve Data with a free API key when configured, with Yahoo Finance fallback otherwise
+- View an overview dashboard with portfolio summary cards, account allocation, asset allocation, and top positions charts
+- Manage holdings from an editable workspace with sorting, inline updates, and deletes
+- Model target-price scenarios on the `Projections` tab and save projected asset targets between visits
+- Model compound growth on the `Compounding` tab with annual return, years, and yearly capital adds
+- Download or open a printable PDF report from the `Reports` tab with summary, combined holdings, detailed holdings, and compounding milestones
 
 ## Run
 
