@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { CombinedHoldingTable } from "@/components/combined-holding-table";
 import { HoldingForm } from "@/components/holding-form";
 import { HoldingTable } from "@/components/holding-table";
 import type { Holding } from "@/lib/types";
@@ -13,6 +14,10 @@ type HoldingsWorkspaceProps = {
 export function HoldingsWorkspace({ holdings }: HoldingsWorkspaceProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [viewMode, setViewMode] = useState<"positions" | "assets">("positions");
+
+  const isAssetView = viewMode === "assets";
+  const combinedAssetCount = new Set(holdings.map((holding) => holding.symbol)).size;
 
   return (
     <>
@@ -34,8 +39,14 @@ export function HoldingsWorkspace({ holdings }: HoldingsWorkspaceProps) {
             <button
               className={`button ghost${isEditing ? " active" : ""}`}
               type="button"
-              disabled={!holdings.length}
-              onClick={() => setIsEditing((editing) => !editing)}
+              disabled={!holdings.length || isAssetView}
+              onClick={() => {
+                if (isAssetView) {
+                  return;
+                }
+
+                setIsEditing((editing) => !editing);
+              }}
             >
               {isEditing ? "Done" : "Edit mode"}
             </button>
@@ -53,15 +64,42 @@ export function HoldingsWorkspace({ holdings }: HoldingsWorkspaceProps) {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Portfolio</p>
-            <h2>{isEditing ? "Editing" : "Holdings"}</h2>
+            <h2>{isAssetView ? "Combined assets" : isEditing ? "Editing" : "Holdings"}</h2>
           </div>
-          <div className="mini-meta">
-            <span>{holdings.length} positions</span>
-            {isEditing ? <span>Edit mode on</span> : null}
+          <div className="holdings-panel-actions">
+            <div className="workspace-actions holdings-view-actions">
+              <button
+                className={`button ghost${!isAssetView ? " active" : ""}`}
+                type="button"
+                onClick={() => setViewMode("positions")}
+              >
+                By position
+              </button>
+              <button
+                className={`button ghost${isAssetView ? " active" : ""}`}
+                type="button"
+                onClick={() => {
+                  setViewMode("assets");
+                  setIsEditing(false);
+                }}
+              >
+                By asset
+              </button>
+            </div>
+
+            <div className="mini-meta">
+              <span>{isAssetView ? `${combinedAssetCount} assets` : `${holdings.length} positions`}</span>
+              {isAssetView ? <span>Combined asset view</span> : null}
+              {isEditing ? <span>Edit mode on</span> : null}
+            </div>
           </div>
         </div>
 
-        <HoldingTable holdings={holdings} editing={isEditing} />
+        {isAssetView ? (
+          <CombinedHoldingTable holdings={holdings} />
+        ) : (
+          <HoldingTable holdings={holdings} editing={isEditing} />
+        )}
       </section>
     </>
   );
