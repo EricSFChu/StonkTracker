@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { formatCurrency, formatNumber } from "@/lib/format";
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 import type { Holding } from "@/lib/types";
 
 type CombinedHoldingTableProps = {
@@ -15,6 +15,7 @@ type CombinedHoldingRow = {
   quantity: number;
   costBasis: number | null;
   currentPrice: number | null;
+  plOpen: number | null;
   marketValue: number;
   weight: number;
 };
@@ -25,6 +26,7 @@ type SortKey =
   | "quantity"
   | "costBasis"
   | "currentPrice"
+  | "plOpen"
   | "marketValue"
   | "weight";
 
@@ -84,6 +86,8 @@ function getSortValue(row: CombinedHoldingRow, key: SortKey) {
       return row.costBasis;
     case "currentPrice":
       return row.currentPrice;
+    case "plOpen":
+      return row.plOpen;
     case "marketValue":
       return row.marketValue;
     case "weight":
@@ -155,6 +159,10 @@ export function CombinedHoldingTable({ holdings }: CombinedHoldingTableProps) {
             ? row.costBasisTotal / row.costBasisQuantity
             : null,
         currentPrice: row.quantity > 0 ? row.marketValue / row.quantity : row.currentPrice,
+        plOpen:
+          !row.hasIncompleteCostBasis && row.costBasisTotal > 0
+            ? ((row.marketValue - row.costBasisTotal) / row.costBasisTotal) * 100
+            : null,
         weight: totalValue > 0 ? (row.marketValue / totalValue) * 100 : 0
       }))
       .sort((left, right) => {
@@ -236,6 +244,9 @@ export function CombinedHoldingTable({ holdings }: CombinedHoldingTableProps) {
             <th aria-sort={sortState.key === "currentPrice" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
               {sortLabel("Price", "currentPrice")}
             </th>
+            <th aria-sort={sortState.key === "plOpen" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+              {sortLabel("P/L Open", "plOpen")}
+            </th>
             <th aria-sort={sortState.key === "marketValue" ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
               {sortLabel("Value", "marketValue")}
             </th>
@@ -256,6 +267,7 @@ export function CombinedHoldingTable({ holdings }: CombinedHoldingTableProps) {
               <td>
                 {holding.currentPrice !== null ? formatCurrency(holding.currentPrice) : "—"}
               </td>
+              <td>{holding.plOpen !== null ? formatPercent(holding.plOpen) : "—"}</td>
               <td>{formatCurrency(holding.marketValue)}</td>
               <td>{formatWeight(holding.weight)}</td>
             </tr>
