@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { formatDateTime } from "@/lib/format";
 
 const TWELVE_DATA_BATCH_SIZE = 8;
 const TWELVE_DATA_DELAY_MS = 65_000;
+const JOB_POLL_INTERVAL_MS = 2_000;
 
 type RefreshPricesButtonProps = {
   disabled: boolean;
@@ -16,28 +17,61 @@ type RefreshPricesButtonProps = {
   symbols: string[];
 };
 
-type RefreshResponse = {
-  success?: boolean;
-  provider?: string;
+type RefreshJob = {
+  id: string;
+  status: "running" | "completed" | "failed";
+  phase: "refreshing" | "waiting" | "completed" | "failed";
+  provider: string;
+  waitUntil: string | null;
+  currentBatch: number;
+  totalBatches: number;
+  symbolsTotal: number;
   message?: string;
-  updatedSymbols?: number;
+  updatedSymbols: number;
   missingSymbols?: string[];
+  usesTwelveData: boolean;
+  error?: string | null;
 };
 
-function chunkSymbols(symbols: string[], size: number) {
-  const chunks: string[][] = [];
+type RefreshJobResponse = {
+  started?: boolean;
+  job: RefreshJob | null;
+  message?: string;
+};
 
-  for (let index = 0; index < symbols.length; index += size) {
-    chunks.push(symbols.slice(index, index + size));
-  }
+function formatCompletionMessage(job: RefreshJob) {
+  const providerNote = job.provider ? ` via ${job.provider}` : "";
+  const missingNote =
+    job.missingSymbols && job.missingSymbols.length
+      ? ` Missing: ${job.missingSymbols.join(", ")}.`
+      : "";
 
-  return chunks;
+  return `Updated ${job.updatedSymbols} symbols${providerNote}.${missingNote}`;
 }
 
-function sleep(durationMs: number) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, durationMs);
-  });
+function getJobProgressNote(job: RefreshJob | null) {
+  if (!job || job.status !== "running" || job.totalBatches <= 1 || job.currentBatch <= 0) {
+    return null;
+  }
+
+  return `Batch ${job.currentBatch} of ${job.totalBatches}`;
+}
+
+function getJobStatusMessage(job: RefreshJob | null, fallback: string | null) {
+  if (!job) {
+    return fallback;
+  }
+
+  if (job.status === "failed") {
+    const progressNote = job.updatedSymbols > 0 ? ` Updated ${job.updatedSymbols} first.` : "";
+    return `${job.error ?? job.message ?? "Price refresh failed."}${progressNote}`;
+  }
+
+  if (job.status === "completed") {
+    return formatCompletionMessage(job);
+  }
+
+  return null;
 }
 
 export function RefreshPricesButton({
@@ -48,20 +82,22 @@ export function RefreshPricesButton({
   symbols
 }: RefreshPricesButtonProps) {
   const router = useRouter();
+  const [job, setJob] = useState<RefreshJob | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [currentBatch, setCurrentBatch] = useState(0);
-  const [totalBatches, setTotalBatches] = useState(0);
-  const [waitUntil, setWaitUntil] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
+  const jobRef = useRef<RefreshJob | null>(null);
 
   const usesTwelveData = providerLabel === "Twelve Data";
-  const batchSize = usesTwelveData ? TWELVE_DATA_BATCH_SIZE : Math.max(symbols.length, 1);
-  const delayMs = usesTwelveData ? TWELVE_DATA_DELAY_MS : 0;
+  const isRefreshing = job?.status === "running";
+  const waitUntil = job?.waitUntil ? new Date(job.waitUntil).getTime() : null;
   const remainingSeconds = waitUntil ? Math.max(0, Math.ceil((waitUntil - now) / 1000)) : 0;
 
   useEffect(() => {
-    if (!waitUntil) {
+    jobRef.current = job;
+  }, [job]);
+
+  useEffect(() => {
+    if (!isRefreshing && !waitUntil) {
       return;
     }
 
@@ -70,132 +106,102 @@ export function RefreshPricesButton({
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [waitUntil]);
+  }, [isRefreshing, waitUntil]);
 
-  async function refreshBatch(batchSymbols: string[]) {
-    const response = await fetch("/api/prices/refresh", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        symbols: batchSymbols
-      })
+  async function syncJobStatus() {
+    const response = await fetch("/api/prices/refresh-status", {
+      cache: "no-store"
     });
 
-    const payload = (await response.json()) as RefreshResponse;
+    if (!response.ok) {
+      throw new Error("Refresh status is unavailable.");
+    }
 
-    return {
-      ok: response.ok && payload.success !== false,
-      payload
-    };
+    const payload = (await response.json()) as RefreshJobResponse;
+    const currentJob = jobRef.current;
+    const nextJob = payload.job;
+    const finishedActiveJob =
+      currentJob?.status === "running" &&
+      nextJob?.id === currentJob.id &&
+      nextJob.status !== "running";
+
+    setJob(nextJob);
+
+    if (nextJob) {
+      setStatus(null);
+    }
+
+    if (finishedActiveJob) {
+      router.refresh();
+    }
+
+    return payload;
   }
+
+  useEffect(() => {
+    void syncJobStatus().catch(() => {
+      // Ignore initial load failures and keep the button usable.
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isRefreshing) {
+      return;
+    }
+
+    const poller = window.setInterval(() => {
+      void syncJobStatus().catch(() => {
+        // Keep the last known progress state if polling fails briefly.
+      });
+    }, JOB_POLL_INTERVAL_MS);
+
+    return () => window.clearInterval(poller);
+  }, [isRefreshing]);
 
   async function refreshPrices() {
     if (!symbols.length || isRefreshing) {
       return;
     }
 
-    const batches = chunkSymbols(symbols, batchSize);
-    const missingSymbols = new Set<string>();
-    let updatedSymbols = 0;
-    let activeProvider = providerLabel;
-
-    setIsRefreshing(true);
-    setStatus(null);
-    setCurrentBatch(0);
-    setTotalBatches(batches.length);
-    setWaitUntil(null);
-    setNow(Date.now());
-
     try {
-      for (const [index, batch] of batches.entries()) {
-        const batchNumber = index + 1;
-        const completedBeforeBatch = index * batchSize;
+      const response = await fetch("/api/prices/refresh-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          symbols
+        })
+      });
 
-        setCurrentBatch(batchNumber);
-        setStatus(
-          batches.length > 1
-            ? `Refreshing batch ${batchNumber}/${batches.length}. ${completedBeforeBatch}/${symbols.length} symbols done.`
-            : `Refreshing ${symbols.length} symbols.`
-        );
+      const payload = (await response.json()) as RefreshJobResponse;
 
-        const { ok, payload } = await refreshBatch(batch);
-        activeProvider = payload.provider ?? activeProvider;
-
-        if (!ok) {
-          const progressNote =
-            updatedSymbols > 0 ? ` Updated ${updatedSymbols} symbols before stopping.` : "";
-          setStatus(`${payload.message ?? "Price refresh failed."}${progressNote}`);
-
-          if (updatedSymbols > 0) {
-            router.refresh();
-          }
-
-          return;
-        }
-
-        updatedSymbols += payload.updatedSymbols ?? 0;
-
-        for (const symbol of payload.missingSymbols ?? []) {
-          missingSymbols.add(symbol);
-        }
-
-        if (index < batches.length - 1 && delayMs > 0) {
-          const nextWaitUntil = Date.now() + delayMs;
-          setWaitUntil(nextWaitUntil);
-          setNow(Date.now());
-          setStatus(
-            `Batch ${batchNumber}/${batches.length} complete. Waiting ${Math.ceil(delayMs / 1000)}s for the free tier before the next batch.`
-          );
-          await sleep(delayMs);
-          setWaitUntil(null);
-        }
+      if (!response.ok) {
+        setStatus(payload.message ?? "Price refresh failed.");
+        return;
       }
 
-      const missingNote = missingSymbols.size
-        ? ` Missing: ${Array.from(missingSymbols).join(", ")}.`
-        : "";
-      const batchNote = batches.length > 1 ? ` across ${batches.length} batches` : "";
-      const providerNote = activeProvider ? ` via ${activeProvider}` : "";
-
-      setStatus(`Updated ${updatedSymbols} symbols${batchNote}${providerNote}.${missingNote}`);
-      router.refresh();
+      setNow(Date.now());
+      setJob(payload.job);
+      setStatus(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Price refresh failed.";
-      const progressNote = updatedSymbols > 0 ? ` Updated ${updatedSymbols} symbols first.` : "";
-      setStatus(`${message}${progressNote}`);
-
-      if (updatedSymbols > 0) {
-        router.refresh();
-      }
-    } finally {
-      setIsRefreshing(false);
-      setCurrentBatch(0);
-      setTotalBatches(0);
-      setWaitUntil(null);
+      setStatus(error instanceof Error ? error.message : "Price refresh failed.");
     }
   }
 
-  const buttonLabel = isRefreshing
+  const buttonLabel = isRefreshing && job
     ? remainingSeconds > 0
       ? `Waiting ${remainingSeconds}s`
-      : totalBatches > 1 && currentBatch > 0
-        ? `Refreshing ${currentBatch}/${totalBatches}`
-        : "Refreshing..."
+      : "Refreshing..."
     : "Refresh market prices";
 
   const batchingNote =
-    usesTwelveData && symbols.length > TWELVE_DATA_BATCH_SIZE
-      ? `Free tier limit: ${TWELVE_DATA_BATCH_SIZE} symbols every 65s. Stalest quotes refresh first.`
+    (job?.usesTwelveData && (job.totalBatches ?? 0) > 1) ||
+    (!job && usesTwelveData && symbols.length > TWELVE_DATA_BATCH_SIZE)
+      ? `Free tier: ${TWELVE_DATA_BATCH_SIZE} symbols every ${TWELVE_DATA_DELAY_MS / 1000}s.`
       : null;
-  const activeNote = isRefreshing
-    ? remainingSeconds > 0
-      ? `Next batch starts in ${remainingSeconds}s.`
-      : totalBatches > 1 && currentBatch > 0
-        ? `Running batch ${currentBatch} of ${totalBatches}.`
-        : `Refreshing ${symbols.length} symbols.`
-    : null;
+  const jobProgressNote = getJobProgressNote(job);
+  const jobStatusMessage = getJobStatusMessage(job, status);
 
   return (
     <div className={`refresh-box${compact ? " compact" : ""}`}>
@@ -217,8 +223,8 @@ export function RefreshPricesButton({
       </p>
 
       {batchingNote ? <p className="refresh-meta warning">{batchingNote}</p> : null}
-      {activeNote ? <p className="refresh-meta">{activeNote}</p> : null}
-      {status ? <p className="refresh-status">{status}</p> : null}
+      {jobProgressNote ? <p className="refresh-meta">{jobProgressNote}</p> : null}
+      {jobStatusMessage ? <p className="refresh-status">{jobStatusMessage}</p> : null}
     </div>
   );
 }
