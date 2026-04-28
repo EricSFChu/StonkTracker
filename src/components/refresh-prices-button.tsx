@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { formatDateTime } from "@/lib/format";
 
 const TWELVE_DATA_BATCH_SIZE = 8;
 const TWELVE_DATA_DELAY_MS = 65_000;
 const JOB_POLL_INTERVAL_MS = 2_000;
+const PRICE_REFRESH_STARTED_EVENT = "stonktracker:price-refresh-started";
 
 type RefreshPricesButtonProps = {
   disabled: boolean;
@@ -81,7 +81,6 @@ export function RefreshPricesButton({
   providerLabel,
   symbols
 }: RefreshPricesButtonProps) {
-  const router = useRouter();
   const [job, setJob] = useState<RefreshJob | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -118,21 +117,12 @@ export function RefreshPricesButton({
     }
 
     const payload = (await response.json()) as RefreshJobResponse;
-    const currentJob = jobRef.current;
     const nextJob = payload.job;
-    const finishedActiveJob =
-      currentJob?.status === "running" &&
-      nextJob?.id === currentJob.id &&
-      nextJob.status !== "running";
 
     setJob(nextJob);
 
     if (nextJob) {
       setStatus(null);
-    }
-
-    if (finishedActiveJob) {
-      router.refresh();
     }
 
     return payload;
@@ -184,6 +174,7 @@ export function RefreshPricesButton({
       setNow(Date.now());
       setJob(payload.job);
       setStatus(null);
+      window.dispatchEvent(new Event(PRICE_REFRESH_STARTED_EVENT));
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Price refresh failed.");
     }

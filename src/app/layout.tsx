@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AppNav } from "@/components/app-nav";
+import { PriceRefreshWatcher } from "@/components/price-refresh-watcher";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default function RootLayout({
             <div className="content-shell">{children}</div>
           </div>
         </div>
+        <PriceRefreshWatcher />
       </body>
     </html>
   );
