@@ -606,6 +606,10 @@ code,
   box-shadow: var(--shadow);
 }
 
+.modal-panel-confirm {
+  width: min(460px, 100%);
+}
+
 .modal-header,
 .modal-actions {
   display: flex;
@@ -614,9 +618,19 @@ code,
   gap: 12px;
 }
 
+.modal-actions-confirm {
+  justify-content: flex-end;
+}
+
 .modal-header h2 {
   margin: 0;
   font-size: 1.45rem;
+}
+
+.modal-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
 }
 
 .modal-body {
@@ -905,6 +919,14 @@ code,
 .holdings-editor-row {
   padding-top: 12px;
   border-top: 1px solid rgba(155, 178, 205, 0.12);
+}
+
+.holdings-editor-row-new {
+  margin-inline: -10px;
+  padding: 12px 10px 0;
+  border-top-color: rgba(255, 140, 66, 0.32);
+  border-radius: 8px;
+  background: rgba(255, 140, 66, 0.06);
 }
 
 .holdings-editor-update {
