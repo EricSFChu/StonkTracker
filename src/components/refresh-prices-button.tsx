@@ -39,12 +39,18 @@ export function RefreshPricesButton({
 }: RefreshPricesButtonProps) {
   const [job, setJob] = useState<RefreshJob | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(0);
   const [alternateLabel, setAlternateLabel] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const isRefreshing = job?.status === "running";
   const waitUntil = job?.waitUntil ? new Date(job.waitUntil).getTime() : null;
   const remainingSeconds = waitUntil ? Math.max(0, Math.ceil((waitUntil - now) / 1000)) : 0;
+
+  useEffect(() => {
+    setIsMounted(true);
+    setNow(Date.now());
+  }, []);
 
   useEffect(() => {
     if (!isRefreshing && !waitUntil) {
@@ -162,11 +168,11 @@ export function RefreshPricesButton({
       return "Refresh prices";
     }
 
-    if (job.totalBatches > 1 && job.currentBatch > 0 && alternateLabel) {
+    if (job.totalBatches > 1 && job.currentBatch > 0 && (!isMounted || alternateLabel)) {
       return `Batch ${job.currentBatch}/${job.totalBatches}`;
     }
 
-    if (remainingSeconds > 0) {
+    if (isMounted && remainingSeconds > 0) {
       return `${remainingSeconds}s left`;
     }
 
