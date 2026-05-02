@@ -99,8 +99,8 @@ export function HoldingTable({
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [modalRoot, setModalRoot] = useState<HTMLElement | null>(null);
   const [sortState, setSortState] = useState<SortState>({
-    key: null,
-    direction: "asc"
+    key: "value",
+    direction: "desc"
   });
 
   useEffect(() => {
