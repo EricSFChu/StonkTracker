@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { AppNav } from "@/components/app-nav";
 import { PriceRefreshWatcher } from "@/components/price-refresh-watcher";
+import { SiteSidebar } from "@/components/site-sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,16 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="site-shell">
-          <aside className="site-sidebar">
-            <Link href="/" className="brand-block">
-              <span className="brand-mark">ST</span>
-              <span className="brand-copy">
-                <strong>StonkTracker</strong>
-              </span>
-            </Link>
-
-            <AppNav />
-          </aside>
+          <SiteSidebar />
 
           <div className="site-main">
             <div className="content-shell">{children}</div>

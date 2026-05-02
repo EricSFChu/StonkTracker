@@ -115,6 +115,23 @@ code,
   backdrop-filter: blur(20px);
 }
 
+.sidebar-header,
+.sidebar-content {
+  display: grid;
+  gap: 16px;
+}
+
+.sidebar-menu-button {
+  display: none;
+  border: 1px solid rgba(155, 178, 205, 0.16);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .brand-block {
   display: flex;
   align-items: center;
@@ -743,6 +760,15 @@ code,
   gap: 6px;
 }
 
+.nav-refresh {
+  width: 100%;
+}
+
+.nav-refresh-button {
+  width: 100%;
+  min-width: 0;
+}
+
 .page-intro-actions .refresh-box.compact {
   justify-items: end;
 }
@@ -1276,6 +1302,37 @@ code,
 }
 
 @media (max-width: 860px) {
+  .site-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 14px 15px;
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .sidebar-header .brand-block {
+    min-width: 0;
+  }
+
+  .sidebar-menu-button {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .sidebar-content {
+    display: none;
+  }
+
+  .site-sidebar.open .sidebar-content {
+    display: grid;
+  }
+
   .nav-list {
     grid-template-columns: 1fr;
   }

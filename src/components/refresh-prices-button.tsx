@@ -1,20 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { formatDateTime } from "@/lib/format";
-
-const TWELVE_DATA_BATCH_SIZE = 8;
-const TWELVE_DATA_DELAY_MS = 65_000;
 const JOB_POLL_INTERVAL_MS = 2_000;
+const LABEL_ALTERNATE_INTERVAL_MS = 3_000;
 const PRICE_REFRESH_STARTED_EVENT = "stonktracker:price-refresh-started";
 
 type RefreshPricesButtonProps = {
-  disabled: boolean;
-  lastRefreshAt: string | null;
-  compact?: boolean;
-  providerLabel: string;
-  symbols: string[];
+  disabled?: boolean;
+  symbols?: string[];
 };
 
 type RefreshJob = {
@@ -39,61 +33,18 @@ type RefreshJobResponse = {
   message?: string;
 };
 
-function formatCompletionMessage(job: RefreshJob) {
-  const providerNote = job.provider ? ` via ${job.provider}` : "";
-  const missingNote =
-    job.missingSymbols && job.missingSymbols.length
-      ? ` Missing: ${job.missingSymbols.join(", ")}.`
-      : "";
-
-  return `Updated ${job.updatedSymbols} symbols${providerNote}.${missingNote}`;
-}
-
-function getJobProgressNote(job: RefreshJob | null) {
-  if (!job || job.status !== "running" || job.totalBatches <= 1 || job.currentBatch <= 0) {
-    return null;
-  }
-
-  return `Batch ${job.currentBatch} of ${job.totalBatches}`;
-}
-
-function getJobStatusMessage(job: RefreshJob | null, fallback: string | null) {
-  if (!job) {
-    return fallback;
-  }
-
-  if (job.status === "failed") {
-    const progressNote = job.updatedSymbols > 0 ? ` Updated ${job.updatedSymbols} first.` : "";
-    return `${job.error ?? job.message ?? "Price refresh failed."}${progressNote}`;
-  }
-
-  if (job.status === "completed") {
-    return formatCompletionMessage(job);
-  }
-
-  return null;
-}
-
 export function RefreshPricesButton({
-  disabled,
-  lastRefreshAt,
-  compact = false,
-  providerLabel,
+  disabled = false,
   symbols
 }: RefreshPricesButtonProps) {
   const [job, setJob] = useState<RefreshJob | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
-  const jobRef = useRef<RefreshJob | null>(null);
+  const [alternateLabel, setAlternateLabel] = useState(false);
 
-  const usesTwelveData = providerLabel === "Twelve Data";
   const isRefreshing = job?.status === "running";
   const waitUntil = job?.waitUntil ? new Date(job.waitUntil).getTime() : null;
   const remainingSeconds = waitUntil ? Math.max(0, Math.ceil((waitUntil - now) / 1000)) : 0;
-
-  useEffect(() => {
-    jobRef.current = job;
-  }, [job]);
 
   useEffect(() => {
     if (!isRefreshing && !waitUntil) {
@@ -106,6 +57,19 @@ export function RefreshPricesButton({
 
     return () => window.clearInterval(timer);
   }, [isRefreshing, waitUntil]);
+
+  useEffect(() => {
+    if (!isRefreshing || !job || job.totalBatches <= 1) {
+      setAlternateLabel(false);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setAlternateLabel((current) => !current);
+    }, LABEL_ALTERNATE_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [isRefreshing, job?.id, job?.totalBatches]);
 
   async function syncJobStatus() {
     const response = await fetch("/api/prices/refresh-status", {
@@ -149,25 +113,34 @@ export function RefreshPricesButton({
   }, [isRefreshing]);
 
   async function refreshPrices() {
-    if (!symbols.length || isRefreshing) {
+    if (isRefreshing) {
       return;
     }
 
     try {
-      const response = await fetch("/api/prices/refresh-status", {
-        method: "POST",
-        headers: {
+      setStatus(null);
+
+      const requestInit: RequestInit = {
+        method: "POST"
+      };
+
+      if (symbols) {
+        requestInit.headers = {
           "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
+        };
+        requestInit.body = JSON.stringify({
           symbols
-        })
+        });
+      }
+
+      const response = await fetch("/api/prices/refresh-status", {
+        ...requestInit
       });
 
       const payload = (await response.json()) as RefreshJobResponse;
 
       if (!response.ok) {
-        setStatus(payload.message ?? "Price refresh failed.");
+        setStatus(response.status === 400 ? "No holdings" : "Refresh failed");
         return;
       }
 
@@ -175,29 +148,37 @@ export function RefreshPricesButton({
       setJob(payload.job);
       setStatus(null);
       window.dispatchEvent(new Event(PRICE_REFRESH_STARTED_EVENT));
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Price refresh failed.");
+    } catch {
+      setStatus("Refresh failed");
     }
   }
 
-  const buttonLabel = isRefreshing && job
-    ? remainingSeconds > 0
-      ? `Waiting ${remainingSeconds}s`
-      : "Refreshing..."
-    : "Refresh market prices";
+  const buttonLabel = (() => {
+    if (status) {
+      return status;
+    }
 
-  const batchingNote =
-    (job?.usesTwelveData && (job.totalBatches ?? 0) > 1) ||
-    (!job && usesTwelveData && symbols.length > TWELVE_DATA_BATCH_SIZE)
-      ? `Free tier: ${TWELVE_DATA_BATCH_SIZE} symbols every ${TWELVE_DATA_DELAY_MS / 1000}s.`
-      : null;
-  const jobProgressNote = getJobProgressNote(job);
-  const jobStatusMessage = getJobStatusMessage(job, status);
+    if (!isRefreshing || !job) {
+      return "Refresh prices";
+    }
+
+    if (job.totalBatches > 1 && job.currentBatch > 0 && alternateLabel) {
+      return `Batch ${job.currentBatch}/${job.totalBatches}`;
+    }
+
+    if (remainingSeconds > 0) {
+      return `${remainingSeconds}s left`;
+    }
+
+    return job.totalBatches > 1 && job.currentBatch > 0
+      ? `Batch ${job.currentBatch}/${job.totalBatches}`
+      : "Refreshing...";
+  })();
 
   return (
-    <div className={`refresh-box${compact ? " compact" : ""}`}>
+    <div className="refresh-box compact nav-refresh">
       <button
-        className="button"
+        className="button nav-refresh-button"
         type="button"
         disabled={disabled || isRefreshing}
         onClick={() => {
@@ -206,16 +187,6 @@ export function RefreshPricesButton({
       >
         {buttonLabel}
       </button>
-
-      <p className="refresh-meta">
-        {compact
-          ? `Last refresh: ${formatDateTime(lastRefreshAt)}`
-          : `Stored quote timestamp: ${formatDateTime(lastRefreshAt)}`}
-      </p>
-
-      {batchingNote ? <p className="refresh-meta warning">{batchingNote}</p> : null}
-      {jobProgressNote ? <p className="refresh-meta">{jobProgressNote}</p> : null}
-      {jobStatusMessage ? <p className="refresh-status">{jobStatusMessage}</p> : null}
     </div>
   );
 }
