@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-const JOB_POLL_INTERVAL_MS = 2_000;
+const ACTIVE_JOB_POLL_INTERVAL_MS = 2_000;
+const IDLE_JOB_POLL_INTERVAL_MS = 5_000;
 const LABEL_ALTERNATE_INTERVAL_MS = 3_000;
 const PRICE_REFRESH_STARTED_EVENT = "stonktracker:price-refresh-started";
 
@@ -105,15 +106,11 @@ export function RefreshPricesButton({
   }, []);
 
   useEffect(() => {
-    if (!isRefreshing) {
-      return;
-    }
-
     const poller = window.setInterval(() => {
       void syncJobStatus().catch(() => {
         // Keep the last known progress state if polling fails briefly.
       });
-    }, JOB_POLL_INTERVAL_MS);
+    }, isRefreshing ? ACTIVE_JOB_POLL_INTERVAL_MS : IDLE_JOB_POLL_INTERVAL_MS);
 
     return () => window.clearInterval(poller);
   }, [isRefreshing]);
