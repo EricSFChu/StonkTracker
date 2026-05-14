@@ -1,6 +1,7 @@
 .next
 node_modules
 data
+backups
 yarn-error.log
 *.log
 next-env.d.ts
