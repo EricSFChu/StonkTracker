@@ -148,10 +148,52 @@ code,
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent), #ffb703);
-  color: #091321;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  background: linear-gradient(135deg, #10253d, #06101c);
+  box-shadow: inset 0 0 0 1px rgba(236, 244, 255, 0.08), 0 10px 24px rgba(2, 8, 19, 0.34);
+}
+
+.brand-mark svg {
+  width: 34px;
+  height: 34px;
+}
+
+.brand-mark svg > path:first-child {
+  fill: none;
+  stroke: rgba(155, 178, 205, 0.16);
+  stroke-width: 2;
+}
+
+.brand-chart-shadow {
+  fill: none;
+  stroke: var(--accent-2);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.95;
+}
+
+.brand-chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand-chart-arrow {
+  fill: none;
+  stroke: var(--warning);
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand-chart-start {
+  fill: var(--accent);
+}
+
+.brand-chart-dot {
+  fill: var(--text);
 }
 
 .brand-copy {

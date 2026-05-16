@@ -19,7 +19,16 @@ export function SiteSidebar() {
     <aside className={`site-sidebar${isOpen ? " open" : ""}`}>
       <div className="sidebar-header">
         <Link href="/" className="brand-block" onClick={() => setIsOpen(false)}>
-          <span className="brand-mark">ST</span>
+          <span className="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" role="img">
+              <path d="M12 43H52M12 32H52M12 21H52M22 12V52M34 12V52M46 12V52" />
+              <path className="brand-chart-shadow" d="M14 45L24 35L32 39L47 20" />
+              <path className="brand-chart-line" d="M14 45L24 35L32 39L47 20" />
+              <path className="brand-chart-arrow" d="M47 20H37M47 20V30" />
+              <circle className="brand-chart-start" cx="14" cy="45" r="4" />
+              <circle className="brand-chart-dot" cx="32" cy="39" r="3.5" />
+            </svg>
+          </span>
           <span className="brand-copy">
             <strong>StonkTracker</strong>
           </span>
