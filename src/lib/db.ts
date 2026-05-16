@@ -40,6 +40,12 @@ function initDatabase(db: Database.Database) {
       annual_contribution REAL NOT NULL CHECK (annual_contribution >= 0),
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS report_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      report_name TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 }
 

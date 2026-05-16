@@ -2,11 +2,13 @@ import { PageIntro } from "@/components/page-intro";
 import { ReportDownloadControls } from "@/components/report-download-controls";
 import { formatCurrency, formatDateTime, formatPercent } from "@/lib/format";
 import { getPortfolioReportData } from "@/lib/report-data";
+import { getReportSettings } from "@/lib/report-settings";
 
 export const dynamic = "force-dynamic";
 
 export default function ReportsPage() {
   const report = getPortfolioReportData();
+  const reportSettings = getReportSettings();
   const growthPercent =
     report.compoundingSummary.startingValue > 0
       ? ((report.compoundingSummary.projectedValue - report.compoundingSummary.startingValue) /
@@ -21,7 +23,7 @@ export default function ReportsPage() {
         title="Reports"
         description="Download a printable PDF snapshot of current holdings and the saved compounding scenario."
         actions={
-          <ReportDownloadControls initialName="Portfolio Report" />
+          <ReportDownloadControls initialName={reportSettings.reportName} />
         }
       />
 

@@ -2,27 +2,9 @@ import { NextResponse } from "next/server";
 
 import { getPortfolioReportData } from "@/lib/report-data";
 import { buildPortfolioReportPdf } from "@/lib/report-pdf";
+import { getReportSettings, sanitizeReportName } from "@/lib/report-settings";
 
 export const runtime = "nodejs";
-
-function sanitizeReportName(value: string | null) {
-  const fallback = "Portfolio Report";
-
-  if (!value) {
-    return fallback;
-  }
-
-  const normalized = value
-    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!normalized) {
-    return fallback;
-  }
-
-  return normalized.slice(0, 80);
-}
 
 function slugifyReportName(value: string) {
   const slug = value
@@ -36,7 +18,9 @@ function slugifyReportName(value: string) {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const disposition = url.searchParams.get("disposition") === "inline" ? "inline" : "attachment";
-  const reportName = sanitizeReportName(url.searchParams.get("name"));
+  const reportName = sanitizeReportName(
+    url.searchParams.get("name") ?? getReportSettings().reportName
+  );
   const report = getPortfolioReportData();
   const pdf = buildPortfolioReportPdf(report, {
     reportTitle: reportName

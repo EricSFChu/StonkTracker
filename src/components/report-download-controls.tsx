@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type ReportDownloadControlsProps = {
   initialName: string;
 };
-
-const REPORT_NAME_STORAGE_KEY = "stonktracker.report-name";
 
 function buildReportUrl(reportName: string, disposition: "attachment" | "inline") {
   const params = new URLSearchParams();
@@ -29,32 +27,66 @@ export function ReportDownloadControls({
   initialName
 }: ReportDownloadControlsProps) {
   const [reportName, setReportName] = useState(initialName);
-  const [hasLoadedPersistedName, setHasLoadedPersistedName] = useState(false);
+  const [savedReportName, setSavedReportName] = useState(initialName);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const hasRendered = useRef(false);
+  const saveRequestId = useRef(0);
 
   useEffect(() => {
-    const savedName = window.localStorage.getItem(REPORT_NAME_STORAGE_KEY)?.trim();
-
-    if (savedName) {
-      setReportName(savedName);
-    }
-
-    setHasLoadedPersistedName(true);
-  }, []);
+    setReportName(initialName);
+    setSavedReportName(initialName);
+    setSaveState("idle");
+  }, [initialName]);
 
   useEffect(() => {
-    if (!hasLoadedPersistedName) {
+    if (!hasRendered.current) {
+      hasRendered.current = true;
       return;
     }
 
-    const trimmedName = reportName.trim();
-
-    if (trimmedName) {
-      window.localStorage.setItem(REPORT_NAME_STORAGE_KEY, trimmedName);
+    if (reportName === savedReportName) {
       return;
     }
 
-    window.localStorage.removeItem(REPORT_NAME_STORAGE_KEY);
-  }, [hasLoadedPersistedName, reportName]);
+    const requestId = saveRequestId.current + 1;
+    saveRequestId.current = requestId;
+    const submittedReportName = reportName;
+    setSaveState("saving");
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/reports/settings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            reportName
+          })
+        });
+
+        if (requestId !== saveRequestId.current) {
+          return;
+        }
+
+        if (!response.ok) {
+          setSaveState("error");
+          return;
+        }
+
+        setSavedReportName(submittedReportName);
+        setSaveState("saved");
+      } catch {
+        if (requestId === saveRequestId.current) {
+          setSaveState("error");
+        }
+      }
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [reportName, savedReportName]);
 
   return (
     <div className="report-controls">
@@ -69,7 +101,13 @@ export function ReportDownloadControls({
       </label>
 
       <div className="mini-meta">
-        <span>Report name auto-saves for the next visit</span>
+        <span>
+          {saveState === "saving"
+            ? "Saving report name..."
+            : saveState === "error"
+              ? "Report name save failed"
+              : "Report name saves to the database"}
+        </span>
       </div>
 
       <div className="report-actions">
