@@ -1,21 +1,10 @@
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
+import { getHoldingMarketValue } from "@/lib/portfolio";
 import { ACCOUNT_TYPE_LABELS, type Holding } from "@/lib/types";
 
 type PriceStatusTableProps = {
   holdings: Holding[];
 };
-
-function currentValue(holding: Holding) {
-  if (holding.lastPrice !== null) {
-    return holding.lastPrice * holding.quantity;
-  }
-
-  if (holding.costBasis !== null) {
-    return holding.costBasis * holding.quantity;
-  }
-
-  return null;
-}
 
 export function PriceStatusTable({
   holdings
@@ -44,7 +33,7 @@ export function PriceStatusTable({
         </thead>
         <tbody>
           {holdings.map((holding) => {
-            const value = currentValue(holding);
+            const value = getHoldingMarketValue(holding);
             const currency = holding.currency ?? "USD";
 
             return (

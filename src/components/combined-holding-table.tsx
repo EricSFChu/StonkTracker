@@ -3,21 +3,11 @@
 import { useMemo, useState } from "react";
 
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
+import { getCombinedHoldings, type CombinedHolding } from "@/lib/portfolio";
 import type { Holding } from "@/lib/types";
 
 type CombinedHoldingTableProps = {
   holdings: Holding[];
-};
-
-type CombinedHoldingRow = {
-  symbol: string;
-  name: string | null;
-  quantity: number;
-  costBasis: number | null;
-  currentPrice: number | null;
-  plOpen: number | null;
-  marketValue: number;
-  weight: number;
 };
 
 type SortKey =
@@ -34,18 +24,6 @@ type SortState = {
   key: SortKey | null;
   direction: "asc" | "desc";
 };
-
-function holdingValue(holding: Holding) {
-  if (holding.lastPrice !== null) {
-    return holding.lastPrice * holding.quantity;
-  }
-
-  if (holding.costBasis !== null) {
-    return holding.costBasis * holding.quantity;
-  }
-
-  return 0;
-}
 
 function compareSortValues(left: string | number | null, right: string | number | null) {
   if (left === null && right === null) {
@@ -74,7 +52,7 @@ function formatWeight(value: number) {
   return `${value.toFixed(2)}%`;
 }
 
-function getSortValue(row: CombinedHoldingRow, key: SortKey) {
+function getSortValue(row: CombinedHolding, key: SortKey) {
   switch (key) {
     case "symbol":
       return row.symbol;
@@ -104,67 +82,7 @@ export function CombinedHoldingTable({ holdings }: CombinedHoldingTableProps) {
   });
 
   const combinedHoldings = useMemo(() => {
-    const totalValue = holdings.reduce((sum, holding) => sum + holdingValue(holding), 0);
-    const assetMap = new Map<
-      string,
-      {
-        symbol: string;
-        name: string | null;
-        quantity: number;
-        costBasisTotal: number;
-        costBasisQuantity: number;
-        hasIncompleteCostBasis: boolean;
-        currentPrice: number | null;
-        marketValue: number;
-        weight: number;
-      }
-    >();
-
-    for (const holding of holdings) {
-      const currentPrice = holding.lastPrice ?? holding.costBasis;
-      const currentValue = holdingValue(holding);
-      const existing = assetMap.get(holding.symbol);
-      const costBasisTotal =
-        holding.costBasis !== null ? holding.costBasis * holding.quantity : 0;
-      const costBasisQuantity = holding.costBasis !== null ? holding.quantity : 0;
-
-      if (!existing) {
-        assetMap.set(holding.symbol, {
-          symbol: holding.symbol,
-          name: holding.name,
-          quantity: holding.quantity,
-          costBasisTotal,
-          costBasisQuantity,
-          hasIncompleteCostBasis: holding.costBasis === null,
-          currentPrice,
-          marketValue: currentValue,
-          weight: 0
-        });
-        continue;
-      }
-
-      existing.quantity += holding.quantity;
-      existing.costBasisTotal += costBasisTotal;
-      existing.costBasisQuantity += costBasisQuantity;
-      existing.hasIncompleteCostBasis = existing.hasIncompleteCostBasis || holding.costBasis === null;
-      existing.marketValue += currentValue;
-      existing.name = existing.name ?? holding.name;
-    }
-
-    return Array.from(assetMap.values())
-      .map((row) => ({
-        ...row,
-        costBasis:
-          !row.hasIncompleteCostBasis && row.costBasisQuantity > 0
-            ? row.costBasisTotal / row.costBasisQuantity
-            : null,
-        currentPrice: row.quantity > 0 ? row.marketValue / row.quantity : row.currentPrice,
-        plOpen:
-          !row.hasIncompleteCostBasis && row.costBasisTotal > 0
-            ? ((row.marketValue - row.costBasisTotal) / row.costBasisTotal) * 100
-            : null,
-        weight: totalValue > 0 ? (row.marketValue / totalValue) * 100 : 0
-      }))
+    return getCombinedHoldings(holdings)
       .sort((left, right) => {
         if (!sortState.key) {
           return 0;

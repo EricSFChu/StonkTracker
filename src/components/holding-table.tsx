@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 import { createHoldingAction, deleteHoldingAction, updateHoldingAction } from "@/app/actions";
 import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
+import { getHoldingMarketValue } from "@/lib/portfolio";
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS, type Holding } from "@/lib/types";
 
 type HoldingTableProps = {
@@ -28,18 +29,6 @@ type SortState = {
   key: SortKey | null;
   direction: "asc" | "desc";
 };
-
-function marketValue(holding: Holding) {
-  if (holding.lastPrice !== null) {
-    return holding.lastPrice * holding.quantity;
-  }
-
-  if (holding.costBasis !== null) {
-    return holding.costBasis * holding.quantity;
-  }
-
-  return null;
-}
 
 function compareSortValues(
   left: string | number | null,
@@ -82,7 +71,7 @@ function getSortValue(holding: Holding, key: SortKey) {
     case "lastPrice":
       return holding.lastPrice;
     case "value":
-      return marketValue(holding);
+      return getHoldingMarketValue(holding);
     case "updated":
       return holding.lastPriceUpdatedAt ? new Date(holding.lastPriceUpdatedAt).getTime() : null;
     default:
@@ -307,7 +296,7 @@ export function HoldingTable({
             ) : null}
 
             {sortedHoldings.map((holding) => {
-              const value = marketValue(holding);
+              const value = getHoldingMarketValue(holding);
               const currency = holding.currency ?? "USD";
               const updateFormId = `holding-update-${holding.id}`;
               const rowKey = [
@@ -493,7 +482,7 @@ export function HoldingTable({
         </thead>
         <tbody>
           {sortedHoldings.map((holding) => {
-            const value = marketValue(holding);
+            const value = getHoldingMarketValue(holding);
             const currency = holding.currency ?? "USD";
 
             return (

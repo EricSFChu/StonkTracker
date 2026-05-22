@@ -1,7 +1,7 @@
 import { getCompoundingSettings } from "@/lib/compounding-settings";
 import { getCompoundingSummary } from "@/lib/compounding";
 import { listHoldings } from "@/lib/holdings";
-import { getPortfolioSnapshot } from "@/lib/portfolio";
+import { getHoldingMarketValue, getHoldingUnitPrice, getPortfolioSnapshot } from "@/lib/portfolio";
 import { ACCOUNT_TYPE_LABELS, type Holding } from "@/lib/types";
 
 export type ReportHoldingRow = {
@@ -20,23 +20,6 @@ export type PortfolioReportData = {
   snapshot: ReturnType<typeof getPortfolioSnapshot>;
   compoundingSummary: ReturnType<typeof getCompoundingSummary>;
 };
-
-function getHoldingUnitPrice(holding: Holding) {
-  if (holding.lastPrice !== null) {
-    return holding.lastPrice;
-  }
-
-  if (holding.costBasis !== null) {
-    return holding.costBasis;
-  }
-
-  return null;
-}
-
-function getHoldingMarketValue(holding: Holding) {
-  const unitPrice = getHoldingUnitPrice(holding);
-  return unitPrice !== null ? unitPrice * holding.quantity : 0;
-}
 
 function getPriceSource(holding: Holding): ReportHoldingRow["priceSource"] {
   if (holding.lastPrice !== null) {
@@ -64,7 +47,7 @@ export function getPortfolioReportData(): PortfolioReportData {
         accountLabel: ACCOUNT_TYPE_LABELS[holding.accountType],
         quantity: holding.quantity,
         currentPrice: getHoldingUnitPrice(holding),
-        marketValue: getHoldingMarketValue(holding),
+        marketValue: getHoldingMarketValue(holding) ?? 0,
         priceSource: getPriceSource(holding)
       }))
       .sort((left, right) => right.marketValue - left.marketValue),

@@ -11,21 +11,41 @@ export type ProjectedAsset = {
   lastPriceUpdatedAt: string | null;
 };
 
-function holdingValue(holding: Holding) {
+export type CombinedHolding = {
+  symbol: string;
+  name: string | null;
+  quantity: number;
+  costBasis: number | null;
+  currentPrice: number | null;
+  plOpen: number | null;
+  marketValue: number;
+  weight: number;
+};
+
+export function getHoldingUnitPrice(holding: Holding) {
   if (holding.lastPrice !== null) {
-    return holding.lastPrice * holding.quantity;
+    return holding.lastPrice;
   }
 
   if (holding.costBasis !== null) {
-    return holding.costBasis * holding.quantity;
+    return holding.costBasis;
   }
 
-  return 0;
+  return null;
 }
 
-function costTotal(holding: Holding) {
+export function getHoldingMarketValue(holding: Holding) {
+  const unitPrice = getHoldingUnitPrice(holding);
+  return unitPrice !== null ? unitPrice * holding.quantity : null;
+}
+
+export function getHoldingMarketValueOrZero(holding: Holding) {
+  return getHoldingMarketValue(holding) ?? 0;
+}
+
+export function getHoldingCostValue(holding: Holding) {
   if (holding.costBasis === null) {
-    return 0;
+    return null;
   }
 
   return holding.costBasis * holding.quantity;
@@ -55,7 +75,7 @@ export function getProjectedAssets(holdings: Holding[]): ProjectedAsset[] {
 
   for (const holding of holdings) {
     const existing = assetMap.get(holding.symbol);
-    const currentValue = holdingValue(holding);
+    const currentValue = getHoldingMarketValueOrZero(holding);
     const currency = holding.currency ?? "USD";
 
     if (!existing) {
@@ -139,9 +159,75 @@ export type PortfolioAssetBreakdown = {
   quantity: number;
 };
 
+export function getCombinedHoldings(holdings: Holding[]): CombinedHolding[] {
+  const totalValue = holdings.reduce((sum, holding) => sum + getHoldingMarketValueOrZero(holding), 0);
+  const assetMap = new Map<
+    string,
+    {
+      symbol: string;
+      name: string | null;
+      quantity: number;
+      costBasisTotal: number;
+      costBasisQuantity: number;
+      hasIncompleteCostBasis: boolean;
+      currentPrice: number | null;
+      marketValue: number;
+      weight: number;
+    }
+  >();
+
+  for (const holding of holdings) {
+    const currentPrice = getHoldingUnitPrice(holding);
+    const currentValue = getHoldingMarketValueOrZero(holding);
+    const existing = assetMap.get(holding.symbol);
+    const costBasisValue = getHoldingCostValue(holding);
+    const costBasisTotal = costBasisValue ?? 0;
+    const costBasisQuantity = costBasisValue !== null ? holding.quantity : 0;
+
+    if (!existing) {
+      assetMap.set(holding.symbol, {
+        symbol: holding.symbol,
+        name: holding.name,
+        quantity: holding.quantity,
+        costBasisTotal,
+        costBasisQuantity,
+        hasIncompleteCostBasis: holding.costBasis === null,
+        currentPrice,
+        marketValue: currentValue,
+        weight: 0
+      });
+      continue;
+    }
+
+    existing.quantity += holding.quantity;
+    existing.costBasisTotal += costBasisTotal;
+    existing.costBasisQuantity += costBasisQuantity;
+    existing.hasIncompleteCostBasis = existing.hasIncompleteCostBasis || holding.costBasis === null;
+    existing.marketValue += currentValue;
+    existing.name = existing.name ?? holding.name;
+  }
+
+  return Array.from(assetMap.values()).map((row) => ({
+    symbol: row.symbol,
+    name: row.name,
+    quantity: row.quantity,
+    costBasis:
+      !row.hasIncompleteCostBasis && row.costBasisQuantity > 0
+        ? row.costBasisTotal / row.costBasisQuantity
+        : null,
+    currentPrice: row.quantity > 0 ? row.marketValue / row.quantity : row.currentPrice,
+    plOpen:
+      !row.hasIncompleteCostBasis && row.costBasisTotal > 0
+        ? ((row.marketValue - row.costBasisTotal) / row.costBasisTotal) * 100
+        : null,
+    marketValue: row.marketValue,
+    weight: totalValue > 0 ? (row.marketValue / totalValue) * 100 : 0
+  }));
+}
+
 export function getPortfolioSnapshot(holdings: Holding[]) {
-  const totalValue = holdings.reduce((sum, holding) => sum + holdingValue(holding), 0);
-  const totalCost = holdings.reduce((sum, holding) => sum + costTotal(holding), 0);
+  const totalValue = holdings.reduce((sum, holding) => sum + getHoldingMarketValueOrZero(holding), 0);
+  const totalCost = holdings.reduce((sum, holding) => sum + (getHoldingCostValue(holding) ?? 0), 0);
   const pricedPositions = holdings.filter((holding) => holding.lastPrice !== null).length;
 
   const lastRefreshedAt = holdings.reduce<string | null>((latest, holding) => {
@@ -160,7 +246,7 @@ export function getPortfolioSnapshot(holdings: Holding[]) {
   const assetMap = new Map<string, PortfolioAssetBreakdown>();
 
   for (const holding of holdings) {
-    const value = holdingValue(holding);
+    const value = getHoldingMarketValueOrZero(holding);
     allocationMap.set(holding.accountType, (allocationMap.get(holding.accountType) ?? 0) + value);
 
     const assetKey = holding.symbol;
