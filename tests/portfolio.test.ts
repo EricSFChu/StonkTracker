@@ -7,7 +7,8 @@ import {
   getHoldingMarketValue,
   getHoldingMarketValueOrZero,
   getHoldingUnitPrice,
-  getPortfolioSnapshot
+  getPortfolioSnapshot,
+  getRefreshQueueSymbols
 } from "../src/lib/portfolio.ts";
 import type { AccountType, Holding } from "../src/lib/types.ts";
 
@@ -162,4 +163,47 @@ test("combined holdings mark cost basis and P/L incomplete if any row lacks cost
   assert.equal(rows[0].marketValue, 450);
   assert.equal(rows[0].currentPrice, 150);
   assert.equal(rows[0].weight, 100);
+});
+
+test("refresh queue prioritizes highest value symbols first", () => {
+  const symbols = getRefreshQueueSymbols([
+    holding({
+      id: 1,
+      symbol: "LOW",
+      quantity: 100,
+      costBasis: 1,
+      lastPriceUpdatedAt: null
+    }),
+    holding({
+      id: 2,
+      symbol: "BIG",
+      quantity: 2,
+      lastPrice: 500,
+      lastPriceUpdatedAt: "2026-01-03T00:00:00.000Z"
+    }),
+    holding({
+      id: 3,
+      symbol: "MID",
+      quantity: 3,
+      costBasis: 100,
+      lastPriceUpdatedAt: "2026-01-01T00:00:00.000Z"
+    }),
+    holding({
+      id: 4,
+      symbol: "BIG",
+      quantity: 1,
+      costBasis: 250,
+      lastPriceUpdatedAt: "2026-01-02T00:00:00.000Z"
+    }),
+    holding({
+      id: 5,
+      symbol: "EMPTY",
+      quantity: 1,
+      costBasis: null,
+      lastPrice: null,
+      lastPriceUpdatedAt: null
+    })
+  ]);
+
+  assert.deepEqual(symbols, ["BIG", "MID", "LOW", "EMPTY"]);
 });

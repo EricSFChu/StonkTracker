@@ -1,6 +1,7 @@
-import { applyQuoteUpdates, getDistinctSymbols, normalizeSymbol } from "@/lib/holdings";
+import { applyQuoteUpdates, listHoldings, normalizeSymbol } from "@/lib/holdings";
 import { backupDatabaseAfterRefresh } from "@/lib/db-backup";
 import { QuoteProviderError, fetchBatchQuotes, getQuoteProviderLabel } from "@/lib/market-data";
+import { getRefreshQueueSymbols } from "@/lib/portfolio";
 
 export const TWELVE_DATA_BATCH_SIZE = 8;
 export const TWELVE_DATA_DELAY_MS = 65_000;
@@ -103,7 +104,7 @@ function getBatchConfig(symbolCount: number) {
 }
 
 export function getDefaultRefreshSymbols() {
-  return uniqueSymbols(getDistinctSymbols());
+  return uniqueSymbols(getRefreshQueueSymbols(listHoldings()));
 }
 
 export function getCurrentPriceRefreshJob() {

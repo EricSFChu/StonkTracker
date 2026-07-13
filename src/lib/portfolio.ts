@@ -111,45 +111,67 @@ export function getProjectedAssets(holdings: Holding[]): ProjectedAsset[] {
 }
 
 export function getRefreshQueueSymbols(holdings: Holding[]) {
-  const symbolStaleness = new Map<string, number | null>();
+  const symbolsByValue = new Map<
+    string,
+    {
+      symbol: string;
+      marketValue: number;
+      oldestRefresh: number | null;
+    }
+  >();
 
   for (const holding of holdings) {
-    const current = symbolStaleness.get(holding.symbol);
+    const current = symbolsByValue.get(holding.symbol);
     const timestamp = holding.lastPriceUpdatedAt
       ? new Date(holding.lastPriceUpdatedAt).getTime()
       : null;
 
-    if (current === undefined || timestamp === null) {
-      symbolStaleness.set(holding.symbol, timestamp);
+    if (!current) {
+      symbolsByValue.set(holding.symbol, {
+        symbol: holding.symbol,
+        marketValue: getHoldingMarketValueOrZero(holding),
+        oldestRefresh: timestamp
+      });
       continue;
     }
 
-    if (current !== null && timestamp < current) {
-      symbolStaleness.set(holding.symbol, timestamp);
+    current.marketValue += getHoldingMarketValueOrZero(holding);
+
+    if (timestamp === null || current.oldestRefresh === null) {
+      current.oldestRefresh = null;
+      continue;
+    }
+
+    if (timestamp < current.oldestRefresh) {
+      current.oldestRefresh = timestamp;
     }
   }
 
-  return Array.from(symbolStaleness.entries())
-    .sort(([leftSymbol, leftTimestamp], [rightSymbol, rightTimestamp]) => {
-      if (leftTimestamp === null && rightTimestamp !== null) {
+  return Array.from(symbolsByValue.values())
+    .sort((left, right) => {
+      if (left.marketValue !== right.marketValue) {
+        return right.marketValue - left.marketValue;
+      }
+
+      if (left.oldestRefresh === null && right.oldestRefresh !== null) {
         return -1;
       }
 
-      if (leftTimestamp !== null && rightTimestamp === null) {
+      if (left.oldestRefresh !== null && right.oldestRefresh === null) {
         return 1;
       }
 
-      if (leftTimestamp === null && rightTimestamp === null) {
-        return leftSymbol.localeCompare(rightSymbol);
+      if (left.oldestRefresh === null && right.oldestRefresh === null) {
+        return left.symbol.localeCompare(right.symbol);
       }
 
-      if (leftTimestamp !== rightTimestamp) {
-        return (leftTimestamp ?? 0) - (rightTimestamp ?? 0);
+      if (left.oldestRefresh !== right.oldestRefresh) {
+        return (left.oldestRefresh ?? 0) - (right.oldestRefresh ?? 0);
       }
 
-      return leftSymbol.localeCompare(rightSymbol);
+      return left.symbol.localeCompare(right.symbol);
     })
-    .map(([symbol]) => symbol);
+    .map((entry) => entry.symbol);
 }
 
 export type PortfolioAssetBreakdown = {
