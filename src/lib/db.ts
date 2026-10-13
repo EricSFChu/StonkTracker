@@ -46,6 +46,23 @@ function initDatabase(db: Database.Database) {
       report_name TEXT NOT NULL,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS position_rank_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      captured_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS position_rank_snapshot_items (
+      snapshot_id INTEGER NOT NULL,
+      symbol TEXT NOT NULL,
+      rank INTEGER NOT NULL CHECK (rank >= 1),
+      value REAL NOT NULL CHECK (value >= 0),
+      PRIMARY KEY (snapshot_id, symbol),
+      FOREIGN KEY (snapshot_id) REFERENCES position_rank_snapshots(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS position_rank_snapshot_items_symbol_idx
+      ON position_rank_snapshot_items(symbol);
   `);
 }
 

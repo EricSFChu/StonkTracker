@@ -90,6 +90,36 @@ test("portfolio snapshot totals use quote-or-cost-basis market values", () => {
   ]);
 });
 
+test("portfolio snapshot can attach persisted rank changes to asset rows", () => {
+  const snapshot = getPortfolioSnapshot(
+    [
+      holding({
+        id: 1,
+        symbol: "AAPL",
+        quantity: 2,
+        lastPrice: 150
+      }),
+      holding({
+        id: 2,
+        symbol: "TSLA",
+        quantity: 1,
+        lastPrice: 200
+      })
+    ],
+    {
+      positionRankChanges: new Map([
+        ["AAPL", 2],
+        ["TSLA", -1]
+      ])
+    }
+  );
+
+  assert.deepEqual(snapshot.assetAllocation, [
+    { symbol: "AAPL", label: "AAPL", value: 300, quantity: 2, rankChange: 2 },
+    { symbol: "TSLA", label: "TSLA", value: 200, quantity: 1, rankChange: -1 }
+  ]);
+});
+
 test("combined holdings centralize weighted cost basis, market value, P/L, and weight", () => {
   const rows = getCombinedHoldings([
     holding({

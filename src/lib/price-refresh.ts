@@ -1,7 +1,8 @@
 import { applyQuoteUpdates, listHoldings, normalizeSymbol } from "@/lib/holdings";
 import { backupDatabaseAfterRefresh } from "@/lib/db-backup";
 import { QuoteProviderError, fetchBatchQuotes, getQuoteProviderLabel } from "@/lib/market-data";
-import { getRefreshQueueSymbols } from "@/lib/portfolio";
+import { capturePositionRankSnapshot } from "@/lib/position-rank-snapshots";
+import { getPortfolioSnapshot, getRefreshQueueSymbols } from "@/lib/portfolio";
 
 export const TWELVE_DATA_BATCH_SIZE = 8;
 export const TWELVE_DATA_DELAY_MS = 65_000;
@@ -246,6 +247,12 @@ async function runPriceRefreshJob(
 
         await sleep(delayMs);
       }
+    }
+
+    try {
+      capturePositionRankSnapshot(getPortfolioSnapshot(listHoldings()).assetAllocation);
+    } catch (error) {
+      console.error("Position rank snapshot after price refresh failed.", error);
     }
 
     try {

@@ -179,6 +179,7 @@ export type PortfolioAssetBreakdown = {
   label: string;
   value: number;
   quantity: number;
+  rankChange?: number;
 };
 
 export function getCombinedHoldings(holdings: Holding[]): CombinedHolding[] {
@@ -247,7 +248,14 @@ export function getCombinedHoldings(holdings: Holding[]): CombinedHolding[] {
   }));
 }
 
-export function getPortfolioSnapshot(holdings: Holding[]) {
+type PortfolioSnapshotOptions = {
+  positionRankChanges?: Map<string, number>;
+};
+
+export function getPortfolioSnapshot(
+  holdings: Holding[],
+  options: PortfolioSnapshotOptions = {}
+) {
   const totalValue = holdings.reduce((sum, holding) => sum + getHoldingMarketValueOrZero(holding), 0);
   const totalCost = holdings.reduce((sum, holding) => sum + (getHoldingCostValue(holding) ?? 0), 0);
   const pricedPositions = holdings.filter((holding) => holding.lastPrice !== null).length;
@@ -273,12 +281,19 @@ export function getPortfolioSnapshot(holdings: Holding[]) {
 
     const assetKey = holding.symbol;
     const current = assetMap.get(assetKey);
-    assetMap.set(assetKey, {
+    const rankChange = options.positionRankChanges?.get(assetKey);
+    const nextAsset: PortfolioAssetBreakdown = {
       symbol: assetKey,
       label: formatAssetLabel(holding.symbol),
       value: (current?.value ?? 0) + value,
       quantity: (current?.quantity ?? 0) + holding.quantity
-    });
+    };
+
+    if (rankChange !== undefined) {
+      nextAsset.rankChange = rankChange;
+    }
+
+    assetMap.set(assetKey, nextAsset);
   }
 
   const accountAllocation = Array.from(allocationMap.entries())

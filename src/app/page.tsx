@@ -3,13 +3,15 @@ import { TopAssetsChart } from "@/components/top-assets-chart";
 import { PageIntro } from "@/components/page-intro";
 import { PortfolioSummaryCards } from "@/components/portfolio-summary-cards";
 import { listHoldings } from "@/lib/holdings";
+import { getLatestPositionRankChanges } from "@/lib/position-rank-snapshots";
 import { getPortfolioSnapshot } from "@/lib/portfolio";
 
 export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   const holdings = listHoldings();
-  const snapshot = getPortfolioSnapshot(holdings);
+  const positionRankChanges = getLatestPositionRankChanges();
+  const snapshot = getPortfolioSnapshot(holdings, { positionRankChanges });
 
   return (
     <div className="page-content">

@@ -6,7 +6,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "StonkTracker",
-  description: "Track holdings locally, batch refresh quotes, and project future portfolio value."
+  description: "Track holdings locally, batch refresh quotes, and project future portfolio value.",
+  icons: {
+    icon: [{ url: "/icon.svg?v=stonktracker", type: "image/svg+xml", sizes: "any" }],
+    shortcut: [{ url: "/icon.svg?v=stonktracker", type: "image/svg+xml" }]
+  }
 };
 
 export default function RootLayout({

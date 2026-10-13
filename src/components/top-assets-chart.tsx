@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
+  Cell,
   CartesianGrid,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,11 +20,22 @@ type TopAssetsChartProps = {
   data: PortfolioAssetBreakdown[];
 };
 
+const GOLD_POSITION_THRESHOLD = 100_000;
+const DEFAULT_BAR_FILL = "#2f7df6";
+const GOLD_BAR_FILL = "#f7b801";
+
 type AssetTooltipProps = {
   active?: boolean;
   payload?: Array<{
     payload: PortfolioAssetBreakdown;
   }>;
+};
+
+type RankChangeLabelProps = {
+  x?: number | string;
+  y?: number | string;
+  width?: number | string;
+  value?: number | string;
 };
 
 function AssetTooltip({ active, payload }: AssetTooltipProps) {
@@ -42,6 +55,33 @@ function AssetTooltip({ active, payload }: AssetTooltipProps) {
       <p className="chart-tooltip-value">{formatCurrency(entry.value)}</p>
       <p className="chart-tooltip-meta">{formatNumber(entry.quantity)} shares</p>
     </div>
+  );
+}
+
+function RankChangeLabel({ x, y, width, value }: RankChangeLabelProps) {
+  if (typeof value !== "number" || value === 0) {
+    return null;
+  }
+
+  const xValue = typeof x === "number" ? x : Number(x ?? 0);
+  const yValue = typeof y === "number" ? y : Number(y ?? 0);
+  const widthValue = typeof width === "number" ? width : Number(width ?? 0);
+
+  if (!Number.isFinite(xValue) || !Number.isFinite(yValue) || !Number.isFinite(widthValue)) {
+    return null;
+  }
+
+  return (
+    <text
+      x={xValue + widthValue / 2}
+      y={yValue - 8}
+      textAnchor="middle"
+      fill={value > 0 ? "#24c98b" : "#ff4d6d"}
+      fontSize={13}
+      fontWeight={800}
+    >
+      {value > 0 ? `+${value}` : value}
+    </text>
   );
 }
 
@@ -91,13 +131,13 @@ export function TopAssetsChart({ data }: TopAssetsChartProps) {
           margin={
             large
               ? {
-                  top: 8,
+                  top: 28,
                   right: 12,
                   bottom: 24,
                   left: 20
                 }
               : {
-                  top: 8,
+                  top: 28,
                   right: 8,
                   bottom: 0,
                   left: 20
@@ -113,9 +153,8 @@ export function TopAssetsChart({ data }: TopAssetsChartProps) {
             tickLine={false}
             axisLine={false}
             interval={0}
-            angle={large ? -28 : 0}
-            textAnchor={large ? "end" : "middle"}
-            height={large ? 64 : 30}
+            textAnchor="middle"
+            height={large ? 42 : 30}
           />
           <YAxis
             tickLine={false}
@@ -127,7 +166,15 @@ export function TopAssetsChart({ data }: TopAssetsChartProps) {
             tickFormatter={(value: number) => formatCurrency(value)}
           />
           <Tooltip content={<AssetTooltip />} />
-          <Bar dataKey="value" radius={[14, 14, 0, 0]} fill="#2f7df6" />
+          <Bar dataKey="value" radius={[14, 14, 0, 0]} fill={DEFAULT_BAR_FILL}>
+            {chartData.map((entry) => (
+              <Cell
+                key={entry.symbol}
+                fill={entry.value > GOLD_POSITION_THRESHOLD ? GOLD_BAR_FILL : DEFAULT_BAR_FILL}
+              />
+            ))}
+            <LabelList dataKey="rankChange" content={<RankChangeLabel />} />
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     );
