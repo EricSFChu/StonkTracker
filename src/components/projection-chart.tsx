@@ -19,6 +19,7 @@ import {
   type CompoundingSettings
 } from "@/lib/compounding";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { buildProjectionAxisTicks, formatProjectionAxisTick } from "@/lib/chart-axis";
 
 type ProjectionChartProps = {
   startingValue: number;
@@ -31,12 +32,6 @@ type ProjectionTooltipProps = {
     payload: CompoundingProjectionPoint;
   }>;
 };
-
-function buildAxisTicks(maxValue: number, step: number) {
-  const ceiling = Math.max(step, Math.ceil(maxValue / step) * step);
-
-  return Array.from({ length: Math.floor(ceiling / step) + 1 }, (_, index) => index * step);
-}
 
 function buildSettingsSignature(settings: CompoundingSettings) {
   return JSON.stringify(settings);
@@ -164,9 +159,8 @@ export function ProjectionChart({
   ]);
 
   const projectionData = buildCompoundingProjectionData(startingValue, currentSettings);
-  const axisTicks = buildAxisTicks(
-    projectionData.reduce((largest, entry) => Math.max(largest, entry.projectedValue), 0),
-    250_000
+  const axisTicks = buildProjectionAxisTicks(
+    projectionData.reduce((largest, entry) => Math.max(largest, entry.projectedValue), 0)
   );
   const finalProjection = projectionData[projectionData.length - 1];
 
@@ -287,7 +281,7 @@ export function ProjectionChart({
               tickMargin={10}
               domain={[0, axisTicks[axisTicks.length - 1] ?? 250_000]}
               ticks={axisTicks}
-              tickFormatter={(value: number) => formatCurrency(value)}
+              tickFormatter={formatProjectionAxisTick}
             />
             <Tooltip content={<ProjectionTooltip />} />
             <Area
